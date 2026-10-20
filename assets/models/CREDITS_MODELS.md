@@ -17,5 +17,12 @@ Dokular mobil için küçültüldü; bina modelleri oyunda yıkılabilir parçal
 - `border_stone`: "Big border stone 03" — 3dhdscan — CC Attribution — https://sketchfab.com/3d-models/big-border-stone-03-ed49866dbdfd4b52aad3edaabc63c70f
 - `saw`: "Circular Saw Blade" — kai9987kai — CC Attribution — https://sketchfab.com/3d-models/circular-saw-blade-98d471f4e3ec40ec97703867e04a0a61
 - `container`: "Sea ​​container - Low Poly" — Mozhet_Moroz — CC Attribution — https://sketchfab.com/3d-models/sea-container-low-poly-979114d6e1754f5591735ef3e5e203d4
+- `sedan`: "Abandoned Generic Sedan 1 - Game Ready" — Rashad Ibrahimli — CC Attribution — https://sketchfab.com/3d-models/abandoned-generic-sedan-1-game-ready-6a2169dafc254f399387a679305bb1bf
+- `lada`: "LADA VAZ 2107" — dograaman999 — CC Attribution — https://sketchfab.com/3d-models/lada-vaz-2107-08919ffc20a149e487165902114e1e91
+- `van`: "Pirozhok Scan Retopo (Free Scan)" — Renafox — CC Attribution — https://sketchfab.com/3d-models/pirozhok-scan-retopo-free-scan-07bc48134b364d4f8a43d288b3a0282d
+- `truck`: "LCT 3000 '95 - Low poly model" — Daniel Zhabotinsky — CC Attribution — https://sketchfab.com/3d-models/lct-3000-95-low-poly-model-663a0953c038434a918cb85725c88ffa
+- `pine_a`: "Pine_Tree" — JAdams — CC Attribution — https://sketchfab.com/3d-models/pine-tree-fbd656918d5e4126b82c7b41432aff5f
+- `pine_b`: "Pine Tree [Game-ready]" — Wenedi (^-^)/ — CC Attribution — https://sketchfab.com/3d-models/pine-tree-game-ready-dc3fbd9205cf4027a4455d1f415e0478
+- `log_pile`: "Log Pile (Game Ready / 2K PBR)" — Meerschaum Digital — CC Attribution — https://sketchfab.com/3d-models/log-pile-game-ready-2k-pbr-3f4205a30a7d4adda50c775fb8cce06c
 - `barrel`: "Barrel_01" — Poly Haven — CC0 — https://polyhaven.com/a/Barrel_01
 - `crate`: "wooden_crate_02" — Poly Haven — CC0 — https://polyhaven.com/a/wooden_crate_02

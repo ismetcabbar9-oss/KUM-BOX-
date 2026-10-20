@@ -38,6 +38,13 @@ SKETCHFAB = {
     "border_stone": ("ed49866dbdfd4b52aad3edaabc63c70f", 1024),
     "saw": ("98d471f4e3ec40ec97703867e04a0a61", 1024),
     "container": ("979114d6e1754f5591735ef3e5e203d4", 1024),
+    "sedan": ("6a2169dafc254f399387a679305bb1bf", 1024),
+    "lada": ("08919ffc20a149e487165902114e1e91", 1024),
+    "van": ("07bc48134b364d4f8a43d288b3a0282d", 1024),
+    "truck": ("663a0953c038434a918cb85725c88ffa", 1024),
+    "pine_a": ("fbd656918d5e4126b82c7b41432aff5f", 1024),
+    "pine_b": ("dc3fbd9205cf4027a4455d1f415e0478", 1024),
+    "log_pile": ("3f4205a30a7d4adda50c775fb8cce06c", 1024),
 }
 POLYHAVEN = {"barrel": "Barrel_01", "crate": "wooden_crate_02"}
 

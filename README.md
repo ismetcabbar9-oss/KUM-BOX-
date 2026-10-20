@@ -1,4 +1,4 @@
-# Kaya Yuvarla — prototip v0.4
+# Kaya Yuvarla — prototip v0.5
 
 Geliştirme planı: [PLAN.md](PLAN.md) (kademeli aşamalar).
 
@@ -30,6 +30,15 @@ Sapan ve topta sarı noktalar tahmini yörüngeyi gösterir.
 **Mermiler:** Granit, Bazalt, Yosunlu kaya, Kumtaşı, Dere taşı (gerçek kaya taramaları, farklı yoğunluklar), **Dönen testere** (yüksek devirle döner, yere değince ileri atılır, binaları keserek az enerji kaybeder), **Çelik gülle** (7.85 t/m³), **Patlayıcı varil** (çarpınca patlar: yapıya hasar + çevreye itki).
 
 **Engeller:** dönen çelik pervane (kinematik), sallanan yıkım gülle sarkacı (gerçek menteşe), konteyner yığınları, beton bariyerler, tuğla duvar, variller, sandıklar, taşlar.
+
+## v0.5'te değişenler (Aşama 3)
+
+- **Malzemeler:** taş, ahşap, çelik, cam, beton blokları farklı yoğunluk/dayanım/kırılma davranışıyla (`scripts/block_structure.gd`).
+- **Yeni yapılar** (`scripts/structures.gd`): ahşap gözetleme kulesi, çelik su kulesi (suyla dolu ağır depo), cam sera. 4 ayaklı yapılarda 2 ayak koparsa yapı devrilir.
+- **Binalarda kat döşemeleri:** duvarlar gidince döşemeler düşüp alt katları ezer.
+- **İkinci kademe kırılma:** kopan bina parçası sert çarpışmada önceden hesaplanmış iki yarısına ayrılır; taş blok, döşeme, kiriş, tuğla gibi kutu parçalar ikiye bölünür (performans bütçeli).
+- **Cam:** koptuğu an tuzla buz olur (parlak kırık parçacıkları + cam sesi).
+- **Yeni objeler:** terk edilmiş sedan, LADA 2107, Moskvitch kamyonet, kutu kamyon (Sketchfab CC-BY), çelik I-kiriş yığını, kütük yığını, çam ağaçları.
 
 ## v0.4'te değişenler
 

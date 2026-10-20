@@ -31,6 +31,7 @@ var _by_name := {}
 var _intact_mesh: MeshInstance3D
 var _chunk_meshes: Array[MeshInstance3D] = []
 var _support_dirty := false
+var _total := 0
 
 
 func setup(model_name: String, inner_kind: String) -> void:
@@ -57,6 +58,18 @@ func setup(model_name: String, inner_kind: String) -> void:
 		d.layer = mi.get_meta("layer")
 		d.neighbors = mi.get_meta("neighbors")
 		d.hp = vol * STRENGTH[kind]
+		# İkinci kademe kırılma: önceden hesaplanmış yarılar ya da döşeme kutusu
+		var halves := []
+		for h in mi.get_children():
+			if h is MeshInstance3D and h.name.begins_with("half"):
+				halves.append({"mesh": h.mesh, "hull": h.get_meta("hull"), "volume": h.get_meta("volume"), "offset": h.position})
+		for h in mi.get_children():
+			mi.remove_child(h)
+			h.free()
+		if halves.size() == 2:
+			d.make_splittable_halves(halves, STRENGTH[kind] * 0.35)
+		elif mi.has_meta("box"):
+			d.make_splittable(mi.get_meta("box"), (mi.mesh as BoxMesh).material, STRENGTH[kind] * 0.35)
 		d.building = self
 		d.make_intact()
 		add_child(d)
@@ -194,9 +207,17 @@ func _check_support() -> void:
 		Sfx.crash(global_position + Vector3.UP * 6.0, crash_sound)
 
 
+## Bölünen/silinen parçayı listelerden çıkar
+func forget(d: Destructible) -> void:
+	chunks.erase(d)
+	_by_name.erase(d.name)
+
+
 func intact_ratio() -> float:
+	if _total == 0:
+		_total = chunks.size()
 	var n := 0
 	for d in chunks:
 		if d.intact:
 			n += 1
-	return float(n) / maxf(chunks.size(), 1)
+	return float(n) / maxf(_total, 1)

@@ -16,11 +16,14 @@ otomatik test + ekran görüntüsü + commit + ZIP.
 - [x] Sağlam bloklar tek MultiMesh ile çizilir (yüzlerce blok ≈ birkaç draw call).
 - [x] HARİTA butonu: Test alanı / Kale.
 
-## Aşama 3 — Fizik derinliği ve yeni obje türleri
-- Malzeme çeşitliliği: ahşap kiriş (kırılınca ikiye ayrılır), cam (paramparça), çelik (eğilmez, ağır), taş.
-- Bina kat döşemeleri ve iç kolonlar (çöküş daha gerçekçi: pancake collapse).
-- Yeni objeler: araçlar (araba, kamyon), ahşap kule, köprü, su kulesi, elektrik direkleri, ağaçlar.
-- Moloz parçalarının ikinci kez kırılması (büyük parça yere çarpınca bölünür).
+## Aşama 3 — Fizik derinliği ve yeni obje türleri  ✅ (v0.5)
+- [x] Malzeme çeşitliliği (BlockStructure): taş, ahşap (kolay kırılır, kopan kiriş ikiye kırılır), çelik (çok dayanıklı, bölünmez), cam (koptuğu an tuzla buz), beton.
+- [x] Bina kat döşemeleri: duvarlar yıkılınca döşemeler düşer, alt katları ezer (pancake).
+- [x] İkinci kademe kırılma: bina parçalarının önceden hesaplanmış iki yarısı; kutu parçalar (taş blok, döşeme, kiriş, tuğla) sert düşüşte ikiye bölünür. Kuşak sınırı + kare başı bütçe + toplam tavan (grafik kalitesine bağlı).
+- [x] Taşıyıcı ayak kuralı: 4 ayaklı yapılarda 2 ayak koparsa yapı devrilir.
+- [x] Yeni yapılar: ahşap gözetleme kulesi, çelik su kulesi (≈200 t su deposu), cam sera.
+- [x] Yeni objeler: 4 araç (terk edilmiş sedan, LADA 2107, Moskvitch kamyonet, kutu kamyon), çelik I-kiriş yığını, kütük yığını, çam ağaçları.
+- [ ] Köprü, elektrik direkleri (Aşama 4'teki rampa/harita çalışmasıyla birlikte).
 
 ## Aşama 4 — Rampa ve fırlatıcı çeşitleri
 - Rampalar: kıvrımlı, atlama (kicker), spiral, kayak atlama, çift şeritli.

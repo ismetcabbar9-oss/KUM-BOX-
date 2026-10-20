@@ -27,7 +27,7 @@ var sun: DirectionalLight3D
 var env: Environment
 var launchers: Array[Launcher] = []
 var launcher: Launcher
-var projectiles: Array[Projectile] = []
+var projectiles: Array = []
 var current: Projectile
 var ammo_index := 0
 var size_index := 2
@@ -40,6 +40,7 @@ var _buildings: Array[Building] = []
 
 func _ready() -> void:
 	randomize()
+	Destructible.spawned = 0
 	_build_environment()
 	WorldBuilder.build_ground(self)
 	WorldBuilder.build_ramp(self, RAMP_W, RAMP_H, RAMP_FLAT, RAMP_SLOPE, RAMP_RUNOUT)
@@ -52,6 +53,7 @@ func _ready() -> void:
 	else:
 		_build_targets()
 	_scatter_decor()
+	_scatter_trees()
 
 	camera = preload("res://scripts/game_camera.gd").new()
 	add_child(camera)
@@ -95,6 +97,7 @@ func _ready() -> void:
 		_autotest()
 
 
+
 # --- Grafik kalitesi -------------------------------------------------------
 
 func _apply_quality(q: int) -> void:
@@ -109,6 +112,7 @@ func _apply_quality(q: int) -> void:
 			vp.msaa_3d = Viewport.MSAA_DISABLED
 			vp.scaling_3d_scale = 0.7
 			env.glow_enabled = false
+			Destructible.max_spawned = 40
 		1:
 			sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
 			sun.directional_shadow_max_distance = 140.0
@@ -116,6 +120,7 @@ func _apply_quality(q: int) -> void:
 			vp.msaa_3d = Viewport.MSAA_2X
 			vp.scaling_3d_scale = 0.85
 			env.glow_enabled = true
+			Destructible.max_spawned = 100
 		2:
 			sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
 			sun.directional_shadow_max_distance = 220.0
@@ -123,6 +128,7 @@ func _apply_quality(q: int) -> void:
 			vp.msaa_3d = Viewport.MSAA_2X
 			vp.scaling_3d_scale = 1.0
 			env.glow_enabled = true
+			Destructible.max_spawned = 160
 
 
 # --- Dünya ---------------------------------------------------------------
@@ -193,7 +199,10 @@ func _build_targets() -> void:
 	for i in 5:
 		_prop("jersey", Vector3(-8.0 + i * 4.0, 0, z0 + 8.0), 0.0, "concrete", 1800.0)
 	_brick_wall(Vector3(0, 0, z0 + 22.0), 18.2, 4, WorldBuilder.pbr("red_brick_03", 0.45))
+	_vehicle("sedan", 4.6, 1150.0, Vector3(-3.2, 0, z0 + 36.0), 80.0)
+	_vehicle("lada", 4.1, 1050.0, Vector3(3.0, 0, z0 + 38.0), -100.0)
 	_building("oldbuilding", "brick", Vector3(0.0, 0, z0 + 50.0), 0.0)
+	_structure(Structures.wood_tower(), Vector3(0.0, 0, z0 + 76.0), 0.0)
 	_building("soviet", "concrete", Vector3(0.0, 0, z0 + 105.0), 90.0)
 
 	# TOP şeridi
@@ -203,24 +212,30 @@ func _build_targets() -> void:
 			_prop("crate", Vector3(cx - 1.9 + (i + row * 0.5) * 1.25, row * 0.47, z0 + 18.0), 90.0, "wood", 45.0)
 	for i in 12:
 		_prop("barrel", Vector3(cx - 1.0 + (i % 4) * 0.64, (i / 8) * 0.9, z0 + 26.0 + ((i % 8) / 4) * 0.64), 0.0, "metal", 60.0)
-	_stone_pile(Vector3(cx, 0, z0 + 38.0))
-	_building("booth", "brick", Vector3(cx, 0, z0 + 58.0), 90.0)
+	_stone_pile(Vector3(cx, 0, z0 + 37.0))
+	_structure(Structures.greenhouse(), Vector3(cx, 0, z0 + 46.0), 0.0)
+	_building("booth", "brick", Vector3(cx, 0, z0 + 60.0), 90.0)
+	_prop("log_pile", Vector3(cx + 7.0, 0, z0 + 30.0), 20.0, "wood", 2600.0)
 
 	# MANCINIK şeridi
 	var tx := -42.0
 	var mill := Windmill.new()
 	mill.position = Vector3(tx, 0, z0 + 16.0)
 	add_child(mill)
-	_container_stack(Vector3(tx, 0, z0 + 42.0))
-	_building("tower", "concrete", Vector3(tx, 0, z0 + 80.0), 0.0)
+	_container_stack(Vector3(tx, 0, z0 + 40.0))
+	_structure(Structures.water_tower(), Vector3(tx, 0, z0 + 60.0), 0.0)
+	_building("tower", "concrete", Vector3(tx, 0, z0 + 82.0), 0.0)
 
 	# SAPAN şeridi
 	var sx := 42.0
 	var pend := Pendulum.new()
 	pend.position = Vector3(sx, 0, z0 + 12.0)
 	add_child(pend)
+	_girder_pile(Vector3(sx, 0, z0 + 28.0))
 	_container_stack(Vector3(sx, 0, z0 + 42.0))
-	_building("factory", "brick", Vector3(sx, 0, z0 + 78.0), -90.0)
+	_vehicle("van", 4.2, 1250.0, Vector3(sx - 3.0, 0, z0 + 56.0), 95.0)
+	_vehicle("truck", 6.0, 6500.0, Vector3(sx + 3.5, 0, z0 + 58.0), -85.0)
+	_building("factory", "brick", Vector3(sx, 0, z0 + 80.0), -90.0)
 
 
 ## Dev kale haritası: yalnız kale (+ önünde birkaç bariyer)
@@ -231,6 +246,80 @@ func _build_castle() -> void:
 	f.position = Vector3(0, 0, z0 + 50.0)
 	add_child(f)
 	_buildings.append(f)
+
+
+func _structure(st: BlockStructure, pos: Vector3, rot_y: float) -> void:
+	st.position = pos
+	st.rotation_degrees.y = rot_y
+	add_child(st)
+	_buildings.append(st)
+
+
+## Araç: dışbükey örtü, gerçek kütle. Modelle gelen zemin/yol düzlemleri atılır.
+func _vehicle(model_name: String, length: float, body_mass: float, pos: Vector3, rot_y: float) -> void:
+	var d := Destructible.new()
+	var visual := Models.instance(model_name)
+	for mi: MeshInstance3D in visual.find_children("*", "MeshInstance3D", true, false):
+		var b := mi.mesh.get_aabb()
+		if b.size.y < 0.02 * maxf(b.size.x, b.size.z):
+			mi.get_parent().remove_child(mi)
+			mi.free()
+	d.add_child(visual)
+	Models.fit(visual, length, "length")
+	var pts := PackedVector3Array()
+	for mi: MeshInstance3D in visual.find_children("*", "MeshInstance3D", true, false):
+		var hull := mi.mesh.create_convex_shape(true, true) as ConvexPolygonShape3D
+		var xf := Models._relative_xform(d, mi)
+		for p in hull.points:
+			pts.append(xf * p)
+	d.add_hull(pts)
+	d.configure("metal", body_mass, 0.7)
+	d.position = pos + Vector3.UP * 0.02
+	d.rotation_degrees.y = rot_y
+	add_child(d)
+
+
+## Çelik I-kiriş yığını (4 + 3 + 2): ağır, kırılmaz, birbirinin üstünden kayar
+func _girder_pile(base: Vector3) -> void:
+	var mat := BlockStructure.material("steel")
+	var size := Vector3(7.0, 0.5, 0.36)
+	for row in 3:
+		for i in 4 - row:
+			var d := Destructible.new()
+			var mi := MeshInstance3D.new()
+			var bm := BoxMesh.new()
+			bm.size = size - Vector3.ONE * 0.01
+			bm.material = mat
+			mi.mesh = bm
+			d.add_child(mi)
+			d.add_box(size)
+			d.configure("metal", size.x * size.y * size.z * 7850.0 * 0.3, 0.45)
+			d.position = base + Vector3(0, size.y * 0.5 + row * (size.y + 0.005), (i - (3 - row) * 0.5) * 0.4)
+			add_child(d)
+
+
+## Çevre ağaçları: statik, gövde çarpışmalı, uzakta görünmez
+func _scatter_trees() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 41
+	for i in 26:
+		var side := -1.0 if i % 2 == 0 else 1.0
+		var pos := Vector3(side * rng.randf_range(62.0, 110.0), 0, rng.randf_range(-20.0, 340.0))
+		var body := StaticBody3D.new()
+		var visual := Models.instance("pine_b")
+		body.add_child(visual)
+		Models.fit(visual, rng.randf_range(9.0, 16.0), "height")
+		Models.visibility(visual, 320.0)
+		var trunk := CylinderShape3D.new()
+		trunk.radius = 0.35
+		trunk.height = 6.0
+		var cs := CollisionShape3D.new()
+		cs.shape = trunk
+		cs.position.y = 3.0
+		body.add_child(cs)
+		body.position = pos
+		body.rotation.y = rng.randf() * TAU
+		add_child(body)
 
 
 ## 3 tabanlı konteyner piramidi (3 + 2 + 1)
@@ -276,6 +365,8 @@ func _prop(model_name: String, pos: Vector3, rot_y: float, kind: String, body_ma
 			Models.fit(visual, 1.17, "length")
 		"barrel":
 			Models.fit(visual, 0.88, "height")
+		"log_pile":
+			Models.fit(visual, 3.2, "length")
 	var xf := visual.transform
 	var pts := PackedVector3Array()
 	for p in Models.hull_points(model_name, visual):
@@ -405,9 +496,9 @@ func _discard(p: Projectile) -> void:
 
 
 func _reload() -> void:
-	projectiles = projectiles.filter(func(p: Projectile) -> bool: return is_instance_valid(p))
+	projectiles = projectiles.filter(func(p) -> bool: return is_instance_valid(p))
 	while projectiles.size() >= MAX_PROJECTILES:
-		var old: Projectile = projectiles.pop_front()
+		var old = projectiles.pop_front()
 		if is_instance_valid(old):
 			old.queue_free()
 	var ammo: String = Projectile.ORDER[ammo_index]
@@ -442,8 +533,8 @@ func _on_fired(p: Projectile) -> void:
 func _count_displaced() -> int:
 	var moved := 0
 	for d in _destructibles:
-		if (d as Destructible).is_displaced():
-			moved += 1
+		if not is_instance_valid(d) or (d as Destructible).is_displaced():
+			moved += 1  # bölünen parça da yıkılmış sayılır
 	return moved
 
 
@@ -456,7 +547,7 @@ func _process(delta: float) -> void:
 		var draws := int(RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME))
 		hud.set_fps(int(Engine.get_frames_per_second()), "%d çizim" % draws)
 	hud.set_info(launcher.info() if launcher.is_ready() else "")
-	projectiles = projectiles.filter(func(p: Projectile) -> bool: return is_instance_valid(p))
+	projectiles = projectiles.filter(func(p) -> bool: return is_instance_valid(p))
 	for p in projectiles.duplicate():
 		if p.global_position.y < -50.0:
 			projectiles.erase(p)
@@ -657,11 +748,10 @@ func _shots() -> void:
 		get_viewport().get_texture().get_image().save_png("user://shot_castle2.png")
 		return
 	var views := [
-		[Vector3(-30, 9, 112), Vector3(-42, 5, 125)],
-		[Vector3(30, 7, 128), Vector3(42, 4, 142)],
-		[Vector3(-10, 4, 152), Vector3(-22, 2, 162)],
-		[Vector3(0, 30, 120), Vector3(0, 5, z0 + 60)],
-		[Vector3(-25, 6, z0 + 28), Vector3(0, 4, z0 + 52)],
+		[Vector3(14, 8, z0 + 26), Vector3(0, 5, z0 + 62)],
+		[Vector3(-27, 12, z0 + 38), Vector3(-42, 9, z0 + 62)],
+		[Vector3(-11, 5, z0 + 35), Vector3(-22, 2, z0 + 47)],
+		[Vector3(31, 6, z0 + 38), Vector3(42, 2, z0 + 56)],
 	]
 	camera.target = null
 	for k in views.size():
@@ -670,14 +760,16 @@ func _shots() -> void:
 		await get_tree().process_frame
 		await get_tree().process_frame
 		get_viewport().get_texture().get_image().save_png("user://shot_view%d.png" % k)
-	# Yıkım: eski binaya patlayıcı etkisi + kuleye ağır darbe
-	Building.strike(get_world_3d(), Vector3(0, 3, z0 + 50), 3.0e6, Vector3(0, 0.2, 1))
-	Building.strike(get_world_3d(), Vector3(-42, 4, z0 + 76), 6.0e6, Vector3(0, 0.1, 1))
-	for f in 40:
+	# Yıkım: ahşap kule, su kulesi ayakları, sera, eski bina
+	Building.strike(get_world_3d(), Vector3(0, 4, z0 + 74), 0.4e6, Vector3(0.3, 0, 1))
+	Building.strike(get_world_3d(), Vector3(-42, 3, z0 + 57.5), 4.0e6, Vector3(0, 0, 1))
+	Building.strike(get_world_3d(), Vector3(-22, 1.5, z0 + 43.5), 0.2e6, Vector3(0, 0, 1))
+	Building.strike(get_world_3d(), Vector3(0, 3, z0 + 46), 8.0e6, Vector3(0, 0.1, 1))
+	for f in 45:
 		await get_tree().physics_frame
-	for k in 2:
-		camera.global_position = [Vector3(-14, 6, z0 + 34), Vector3(-26, 10, z0 + 62)][k]
-		camera.look_at([Vector3(0, 4, z0 + 52), Vector3(-42, 8, z0 + 82)][k])
+	for k in 3:
+		camera.global_position = views[k][0]
+		camera.look_at(views[k][1])
 		await get_tree().process_frame
 		await get_tree().process_frame
 		get_viewport().get_texture().get_image().save_png("user://shot_break%d.png" % k)

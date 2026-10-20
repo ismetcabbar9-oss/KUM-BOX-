@@ -246,6 +246,62 @@ func _fracture(name: String, cfg: Dictionary) -> void:
 		boxes[key] = bb
 		for s in mi.mesh.get_surface_count():
 			total_tris += mi.mesh.surface_get_array_index_len(s) / 3
+		_add_halves(mi, g, inner, thick, xplanes[layer_of[key]] + zplanes[layer_of[key]] + yplanes, bb, rng, out)
+
+	# Kat döşemeleri: her kat sınırında, cephe kalınlığı kadar içeriden, çatı altında kalan
+	# hücrelere beton döşeme. Duvarlar yıkılınca döşemeler düşer ve alt katları ezer.
+	var roof2d := []
+	for tri in tris:
+		var a: V = tri[0]
+		var b: V = tri[1]
+		var c: V = tri[2]
+		var fn := (c.p - a.p).cross(b.p - a.p)
+		if fn.length_squared() > 1e-12 and absf(fn.normalized().y) > 0.3:
+			roof2d.append([Vector2(a.p.x, a.p.z), Vector2(b.p.x, b.p.z), Vector2(c.p.x, c.p.z), maxf(a.p.y, maxf(b.p.y, c.p.y))])
+	var inset := thick + 0.08
+	var slab_count := 0
+	for ly in range(1 if cs.y >= 2.5 else dims.y, dims.y):
+		var y := lo.y + ly * cs.y
+		for ix in dims.x:
+			for iz in dims.z:
+				var x0 := maxf(lo.x + ix * cs.x, lo.x + inset) + 0.02
+				var x1 := minf(lo.x + (ix + 1) * cs.x, lo.x + size.x - inset) - 0.02
+				var z0 := maxf(lo.z + iz * cs.z, lo.z + inset) + 0.02
+				var z1 := minf(lo.z + (iz + 1) * cs.z, lo.z + size.z - inset) - 0.02
+				if x1 - x0 < 1.0 or z1 - z0 < 1.0:
+					continue
+				var c2 := Vector2((x0 + x1) * 0.5, (z0 + z1) * 0.5)
+				var covered := false
+				for r in roof2d:
+					if r[3] > y + 1.0 and Geometry2D.point_is_inside_triangle(c2, r[0], r[1], r[2]):
+						covered = true
+						break
+				if not covered:
+					continue
+				var ssize := Vector3(x1 - x0, 0.3, z1 - z0)
+				var center := Vector3(c2.x, y - 0.155, c2.y)
+				var key := "s_%d_%d_%d" % [ix, ly, iz]
+				var bm := BoxMesh.new()
+				bm.size = ssize
+				bm.material = inner
+				var mi := MeshInstance3D.new()
+				mi.name = key
+				mi.mesh = bm
+				mi.position = center
+				var hs := ssize * 0.5
+				var pts := PackedVector3Array()
+				for sx in [-1.0, 1.0]:
+					for sy in [-1.0, 1.0]:
+						for sz in [-1.0, 1.0]:
+							pts.append(Vector3(sx * hs.x, sy * hs.y, sz * hs.z))
+				mi.set_meta("hull", pts)
+				mi.set_meta("volume", ssize.x * ssize.y * ssize.z)
+				mi.set_meta("layer", ly)
+				mi.set_meta("box", ssize)
+				chunks.add_child(mi)
+				mi.owner = out
+				boxes[key] = AABB(center - hs, ssize)
+				slab_count += 1
 
 	# Komşuluk: sınır kutuları (tolerans ile) kesişen parçalar
 	var keys := boxes.keys()
@@ -260,8 +316,51 @@ func _fracture(name: String, cfg: Dictionary) -> void:
 	var ps := PackedScene.new()
 	ps.pack(out)
 	ResourceSaver.save(ps, "res://assets/buildings/%s.scn" % name, ResourceSaver.FLAG_COMPRESS)
-	print("%-12s boyut=%s ızgara=%s parça=%d parça-üçgen=%d" % [name, size.snapped(Vector3.ONE * 0.1), dims, keys.size(), total_tris])
+	print("%-12s boyut=%s ızgara=%s parça=%d (döşeme %d) parça-üçgen=%d" % [name, size.snapped(Vector3.ONE * 0.1), dims, keys.size(), slab_count, total_tris])
 	out.free()
+
+
+## İkinci kademe kırılma için parçanın önceden hesaplanmış iki yarısı (çocuk "half0/1").
+## Kesim düzlemi parçanın en uzun ekseninde, hafif eğik.
+func _add_halves(mi: MeshInstance3D, g: Dictionary, inner: Material, thick: float, cuts: Array, bb: AABB, rng: RandomNumberGenerator, owner_node: Node) -> void:
+	var axis := 0
+	for a in 3:
+		if bb.size[a] > bb.size[axis]:
+			axis = a
+	if bb.size[axis] < 1.6:
+		return
+	var n := Vector3.ZERO
+	n[axis] = 1.0
+	n = (n + Vector3(rng.randf_range(-0.25, 0.25), rng.randf_range(-0.25, 0.25), rng.randf_range(-0.25, 0.25)) * (Vector3.ONE - n.abs())).normalized()
+	var c := bb.get_center() + n * rng.randf_range(-0.15, 0.15) * bb.size[axis]
+	var pl := Plane(n, n.dot(c))
+	var parts := []
+	for side in 2:
+		var cut := pl if side == 0 else Plane(-n, -pl.d)
+		var gh := {}
+		for mat in g:
+			for poly in g[mat]:
+				var q := _clip(poly, cut)
+				if q.size() >= 3:
+					gh.get_or_add(mat, []).append(q)
+		if gh.is_empty():
+			return
+		var res := _solid_mesh(gh, inner, thick, cuts + [pl])
+		if res[1] < 0.03:
+			return
+		parts.append(res)
+	for side in 2:
+		var res: Array = parts[side]
+		var hc: Vector3 = (res[2] as AABB).get_center()
+		var h := MeshInstance3D.new()
+		h.name = "half%d" % side
+		h.mesh = _recenter(res[0], hc)
+		h.position = hc - mi.position
+		h.visible = false
+		h.set_meta("hull", (h.mesh.create_convex_shape(true, true) as ConvexPolygonShape3D).points)
+		h.set_meta("volume", res[1])
+		mi.add_child(h)
+		h.owner = owner_node
 
 
 func _facade_material(mat: Material) -> Material:
