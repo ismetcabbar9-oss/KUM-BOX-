@@ -38,6 +38,8 @@ IDS = {
     "explosion_a": 235968, "explosion_b": 255111,
     "saw_free": 448133, "saw_cut": 267636,
     "catapult_launch": 479922,
+    "countryside": 514550, "countryside_b": 458113,
+    "rock_slide": 655368, "rockslide_b": 608957,
     "sling_1": 513934, "sling_2": 513933, "sling_3": 853649,
 }
 
@@ -95,6 +97,10 @@ def lowpass(x, cutoff):
         s += a * (x[i] - s)
         y[i] = s
     return y
+
+
+def highpass(x, cutoff):
+    return x - lowpass(x, cutoff)
 
 
 def mix(*layers):
@@ -233,6 +239,23 @@ def main():
     for i, k in enumerate(["sling_1", "sling_2", "sling_3"]):
         snap = fade(trim_silence(S[k]), 0.001, 0.3)
         write(f"sling_{i}", mix((snap, 1.0), (resample(snap, 0.6), 0.5)), 0.85)
+
+    # Kır ambiyansı: kuşlar + uzak doğa. Mikrofon rüzgâr gürültüsü (<150 Hz) kesilir,
+    # en sakin 40 sn'lik bölüm seçilir, dikişsiz döngü yapılır.
+    amb = highpass(S["countryside"][:int(120 * SR)], 150.0)
+    win = int(40 * SR)
+    best, best_score = 0, 1e9
+    for st in range(0, max(len(amb) - win, 1), int(5 * SR)):
+        seg = amb[st:st + win]
+        r = np.sqrt(np.convolve(seg ** 2, np.ones(SR) / SR, mode="valid")[::SR])
+        score = r.max() / (r.mean() + 1e-9)  # ani patlamalar (araba, ses) olmayan kısım
+        if score < best_score:
+            best, best_score = st, score
+    write("ambient_loop", loop(amb[best:best + win], 3.0), 0.5)
+
+    # Taş yığını çöküşü (kale)
+    for i, k in enumerate(["rock_slide", "rockslide_b"]):
+        write(f"stone_crash_{i}", fade(trim_silence(S[k])[:int(6 * SR)], 0.001, 1.5), 0.85)
 
     # Rüzgâr ambiyansı (30 sn, dikişsiz)
     wind = S["wind_light"][int(5 * SR):int(37 * SR)]

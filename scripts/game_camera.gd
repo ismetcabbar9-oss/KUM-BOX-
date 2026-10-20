@@ -52,6 +52,14 @@ func _process(delta: float) -> void:
 	if target == null or not is_instance_valid(target):
 		return
 	var real_dt := delta / maxf(Engine.time_scale, 0.01)
+	# Dikey ekranda yatay görüş açısını koru (sahne yanlardan kesilmesin)
+	var vs := get_viewport().get_visible_rect().size
+	if vs.y > vs.x:
+		keep_aspect = Camera3D.KEEP_WIDTH
+		fov = 78.0
+	else:
+		keep_aspect = Camera3D.KEEP_HEIGHT
+		fov = 62.0
 	var tpos := target.get_global_transform_interpolated().origin
 	var rb := target as RigidBody3D
 	# Yön: kayanın yatay hızına göre yumuşak dön

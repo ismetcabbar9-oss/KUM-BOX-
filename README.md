@@ -1,4 +1,6 @@
-# Kaya Yuvarla — prototip v0.3
+# Kaya Yuvarla — prototip v0.4
+
+Geliştirme planı: [PLAN.md](PLAN.md) (kademeli aşamalar).
 
 Gerçekçi fizikli, dokunmatik kontrollü 3D mobil sandbox. Uzun beton rampadan kaya yuvarla; bariyerleri, duvarı ve **gerçek bina modellerini** yık.
 
@@ -20,7 +22,7 @@ Sağdaki butonlar: **FIRLAT/YÜKLE**, **fırlatıcı** (dokundukça değişir), 
 |---|---|---|
 | **RAMPA** | yana sürükle: hizala, yukarı kaydır: it | 55 m beton rampa, yerçekimiyle yuvarlanma |
 | **MANCINIK** | yana: yön, yukarı/aşağı: karşı ağırlık (30–180 t) | menteşeli kol + serbest sallanan karşı ağırlık + kaşık; bırakma pimi 48°'de çözülür |
-| **DEV SAPAN** | aşağı sürükle: ger, yana: nişan, FIRLAT: bırak | iki lastik Hooke yasasıyla (F = k·x) çeker; ağır mermi daha yavaş çıkar |
+| **DEV SAPAN** | çek-bırak: parmağı koy, geri (aşağı) çek, yana nişan al, bırakınca atar; güç = çekme mesafesi | iki lastik Hooke yasasıyla (F = k·x) çeker; ağır mermi daha yavaş çıkar |
 | **HAVA TOPU** | yana: yön, yukarı/aşağı: namlu açısı | sabit basınç enerjisi (½mv² = E) |
 
 Sapan ve topta sarı noktalar tahmini yörüngeyi gösterir.
@@ -28,6 +30,16 @@ Sapan ve topta sarı noktalar tahmini yörüngeyi gösterir.
 **Mermiler:** Granit, Bazalt, Yosunlu kaya, Kumtaşı, Dere taşı (gerçek kaya taramaları, farklı yoğunluklar), **Dönen testere** (yüksek devirle döner, yere değince ileri atılır, binaları keserek az enerji kaybeder), **Çelik gülle** (7.85 t/m³), **Patlayıcı varil** (çarpınca patlar: yapıya hasar + çevreye itki).
 
 **Engeller:** dönen çelik pervane (kinematik), sallanan yıkım gülle sarkacı (gerçek menteşe), konteyner yığınları, beton bariyerler, tuğla duvar, variller, sandıklar, taşlar.
+
+## v0.4'te değişenler
+
+- **Sapan çek-bırak:** buton yok. Ne kadar geri çekersen o kadar güç; parmağı kaldırınca kendiliğinden atar. Az çekip bırakırsan iptal olur.
+- **5 boyut:** ÇOK KÜÇÜK, KÜÇÜK, ORTA, BÜYÜK, DEV (DEV rampa kayası ~960 t).
+- **Dev kale haritası** (HARİTA butonu): ~1000 taş bloktan surlar, 4 kule, donjon, kapı, mazgallar. Bloklar birikimli hasar alır (aynı yere vurdukça çatlar, kopar); oyuğun üstü kemer gibi 1 sıra tutunur, daha yukarısı çöker. Testte 30 adet 12 MJ'lik darbe (≈ ORTA rampa kayası) kalenin ~%70'ini yıktı. Sağlam bloklar MultiMesh ile çizilir.
+- **Dikey ve yatay ekran:** arayüz ve kamera yönlendirmeye uyar.
+- **Düzenli hedef şeritleri:** her fırlatıcının önünde kendi hedefleri.
+- **Yeni çevre sesi:** kuş ağırlıklı kır ambiyansı (rüzgâr uğultusu filtrelendi).
+- Düzeltme: statikten çözülen parçaya verilen itki kayboluyordu; kopan parçalar artık darbe yönünde fırlıyor.
 
 ## v0.3'te değişenler
 
@@ -96,6 +108,7 @@ python3 tools/fetch_textures.py
 ```
 godot --headless --path . --fixed-fps 60 -- --autotest --launcher=1 --ammo=saw
 ```
+`--map=castle` kale haritası, `--siege=N` N gerçek atış, `--siege-synth=N` N yapay 12 MJ darbe (denge testi).
 `--launcher`: 0 rampa, 1 mancınık, 2 sapan, 3 top. `--ammo`: granite, basalt, mossy, sandstone, river, saw, steel, bomb. `--trace` ilk 2,5 sn'yi adım adım yazar.
 `-- --autotest --shots` ekran görüntüsü alır (görüntülü ortam gerekir).
 

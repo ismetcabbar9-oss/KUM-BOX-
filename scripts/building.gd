@@ -17,10 +17,15 @@ const DENSITY := {"concrete": 2000.0, "brick": 1800.0}
 ## Parça dayanımı: J / m³ (katı hacim). Tuğla betondan zayıf.
 const STRENGTH := {"concrete": 55000.0, "brick": 38000.0}
 const MAX_SPAN := 2
+## Kırılmayan parçaya düşen enerjinin kalıcı hasara dönüşen oranı
+const CRACK := 0.55
 
 var chunks: Array[Destructible] = []
 var broken := false
 var kind := "concrete"
+var max_span := float(MAX_SPAN)
+## Asılı bir parçanın üstündeki her sıranın ek maliyeti (0 = sınırsız taşıma)
+var hang_up := 0.0
 var _by_name := {}
 var _intact_mesh: MeshInstance3D
 var _chunk_meshes: Array[MeshInstance3D] = []
@@ -63,7 +68,7 @@ func setup(model_name: String, inner_kind: String) -> void:
 ## Bir noktaya çarpma: çevredeki sağlam bina parçalarına enerji uygular.
 ## Döner: harcanan (kırılmaya giden) enerji.
 static func strike(world: World3D, point: Vector3, energy: float, direction: Vector3, exclude: Object = null) -> float:
-	var radius := clampf(0.8 + 0.32 * pow(energy / 10000.0, 1.0 / 3.0), 1.0, 6.0)
+	var radius := clampf(0.8 + 0.45 * pow(energy / 10000.0, 1.0 / 3.0), 1.0, 8.0)
 	var q := PhysicsShapeQueryParameters3D.new()
 	var sphere := SphereShape3D.new()
 	sphere.radius = radius
@@ -87,16 +92,26 @@ func _apply_damage(point: Vector3, energy: float, direction: Vector3, radius: fl
 	hits.sort_custom(func(a: Destructible, b: Destructible) -> bool:
 		return a.global_position.distance_squared_to(point) < b.global_position.distance_squared_to(point))
 	var used := 0.0
+	var spent := 0.0  # enerji dağıtımı için (çatlak + kırılma)
+	var cracked := 0
 	var dir := direction.normalized() if direction.length_squared() > 0.001 else Vector3.DOWN
 	for d: Destructible in hits:
 		if not d.intact:
 			continue
 		var dist := d.global_position.distance_to(point)
-		var share := (energy - used) * clampf(1.15 - dist / (radius * 1.6), 0.15, 1.0)
+		var share := (energy - spent) * clampf(1.15 - dist / (radius * 1.6), 0.15, 1.0)
 		if share < d.hp:
+			# Birikimli hasar: kırılmayan parça çatlar (dayanımı azalır), enerjinin bir
+			# kısmını emer. Aynı yere tekrar tekrar vurmak sonunda deler.
+			var absorbed := share * CRACK
+			d.hp -= absorbed
+			spent += absorbed
+			used += absorbed * 0.3  # çatlatmak mermiyi az yavaşlatır
+			cracked += 1
 			continue
 		_break_visual()
 		used += d.hp
+		spent += d.hp
 		# Artan enerji parçaya hız olarak geçer (en fazla ~18 m/s)
 		var extra := maxf(share - d.hp, 0.0)
 		var kick := minf(sqrt(2.0 * extra / d.mass), 18.0) * 0.6
@@ -104,8 +119,12 @@ func _apply_damage(point: Vector3, energy: float, direction: Vector3, radius: fl
 		d.release((dir + spread).normalized() * d.mass * kick, point)
 		Fx.dust(d.global_position, 1.4)
 		Fx.rubble(d.global_position, dir, 1.0)
-		if used >= energy * 0.95:
+		if spent >= energy * 0.95:
 			break
+	if OS.get_cmdline_user_args().has("--debug-strike"):
+		print("  darbe: E=%.2f MJ r=%.1f isabet=%d kopan=%d çatlak=%d kullanılan=%.2f MJ" % [energy / 1e6, radius, hits.size(), chunks.filter(func(c: Destructible) -> bool: return not c.intact).size(), cracked, used / 1e6])
+	if cracked > 0:
+		Fx.dust(point, 1.0)
 	if used > 0.0:
 		Sfx.debris(point, 10.0)
 		if used > 400000.0:
@@ -135,31 +154,35 @@ func _mark_support_dirty() -> void:
 ## uzaktaki ya da hiç bağlantısı kalmayan sağlam parçalar serbest kalır.
 func _check_support() -> void:
 	_support_dirty = false
+	# Etiket düzeltmeli arama (küçük grafik): maliyet = "asılılık".
+	#  - zemindeki parça: 0
+	#  - yana ya da aşağı adım: +1
+	#  - yukarı adım: desteği tam olan (0) parçadan bedava, asılı parçadan +hang_up
+	#    (asılı bir bloğun üstüne binen her sıra yükü artırır: büyük oyuğun üstü çöker)
 	var cost := {}
 	var queue: Array[Destructible] = []
 	for d in chunks:
 		if d.intact and d.layer == 0:
-			cost[d] = 0
+			cost[d] = 0.0
 			queue.append(d)
 	var head := 0
 	while head < queue.size():
 		var c: Destructible = queue[head]
 		head += 1
-		var cc: int = cost[c]
+		var cc: float = cost[c]
 		for nn in c.neighbors:
 			var n: Destructible = _by_name.get(nn)
 			if n == null or not n.intact:
 				continue
-			var step := 0 if n.layer > c.layer else 1
+			var step := 1.0
+			if n.layer > c.layer:
+				step = 0.0 if cc == 0.0 else hang_up
 			var nc := cc + step
-			if nc > MAX_SPAN:
+			if nc > max_span:
 				continue
-			if not cost.has(n) or nc < cost[n]:
+			if not cost.has(n) or nc < cost[n] - 0.001:
 				cost[n] = nc
-				if step == 0:
-					queue.insert(head, n)  # 0 maliyetli kenar: öne
-				else:
-					queue.append(n)
+				queue.append(n)
 	var fell := 0
 	for d in chunks:
 		if d.intact and not cost.has(d):

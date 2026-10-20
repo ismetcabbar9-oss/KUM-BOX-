@@ -3,13 +3,20 @@ extends Launcher
 ## Dev sapan: mermi parmakla geri çekilir; bırakınca iki lastik Hooke yasasıyla
 ## (F = k·x) mermiyi dinlenme noktasına doğru hızlandırır, mermi noktayı geçince lastik
 ## ayrılır. Hız fizikten gelir: ağır mermi daha yavaş gider.
+##
+## Kontrol: çek-bırak. Parmak ekrana değince keseden tutulur; aşağı/yana sürükleyerek
+## geri çekilir (ters yöne nişan). Parmak kalkınca, çekme mesafesine göre kendiliğinden atar.
+## Çok az çekilip bırakılırsa atış iptal olur, kese yerine döner.
 
 const REST := Vector3(0, 5.0, 0)
 const POST_X := 3.3
 const K := 45000.0  # N/m (iki lastik toplamı; mermi ölçeğiyle büyür)
 const MAX_PULL := 9.0
+const MIN_PULL := 1.6
+const REST_PULL := Vector3(0, -0.2, -0.8)
 
-var pull := Vector3(0, -1.0, -6.0)
+var pull := REST_PULL
+var pulling := false
 var _spring_body: Projectile
 var _spring_time := 0.0
 var _bands: Array[MeshInstance3D] = []
@@ -65,6 +72,8 @@ func _post_top(side: float) -> Vector3:
 
 func load_projectile(p: Projectile) -> void:
 	loaded = p
+	pull = REST_PULL
+	pulling = false
 	# Lastik sertliği mermi ölçeğiyle büyür (büyük mermi için büyük sapan hissi)
 	_k_scale = pow(p.radius / base_radius, 3.0)
 	_place()
@@ -84,29 +93,51 @@ func _launch_speed() -> Vector3:
 
 
 func _update_preview() -> void:
-	if is_ready():
+	if is_ready() and pulling and pull.length() >= MIN_PULL:
 		_show_arc(to_global(REST), _launch_speed())
+	else:
+		_hide_arc()
 
 
-func drag(relative: Vector2, _vs: Vector2) -> void:
-	if not is_ready():
+func uses_button() -> bool:
+	return false
+
+
+func press() -> void:
+	if is_ready():
+		pulling = true
+
+
+func drag(relative: Vector2, vs: Vector2) -> void:
+	if not is_ready() or not pulling:
 		return
-	pull.x = clampf(pull.x - relative.x * 0.02, -4.0, 4.0)
-	pull.z = clampf(pull.z - relative.y * 0.03, -MAX_PULL, -1.0)
-	pull.y = clampf(pull.y - relative.y * 0.012, -3.5, 1.0)
+	# Ekran boyutundan bağımsız: ekran yüksekliğinin ~%45'i = tam gerilim
+	var k := MAX_PULL / (minf(vs.x, vs.y) * 0.45)
+	pull.x = clampf(pull.x - relative.x * k * 0.55, -4.5, 4.5)
+	pull.z = clampf(pull.z - relative.y * k, -MAX_PULL, -0.8)
+	pull.y = clampf(pull.y - relative.y * k * 0.4, -3.5, 1.0)
 	if pull.length() > MAX_PULL:
 		pull = pull.normalized() * MAX_PULL
 	_place()
 
 
 func release(_swipe: float) -> bool:
-	return false
+	if not is_ready() or not pulling:
+		return false
+	pulling = false
+	if pull.length() < MIN_PULL:
+		pull = REST_PULL
+		_place()
+		return false
+	fire()
+	return true
 
 
 func fire(_power := -1.0) -> void:
-	if not is_ready():
+	if not is_ready() or pull.length() < MIN_PULL:
 		return
 	var p := loaded
+	pulling = false
 	_hide_arc()
 	p.launch(Vector3.ZERO)
 	_spring_body = p
@@ -146,8 +177,9 @@ func _process(_delta: float) -> void:
 
 
 func info() -> String:
-	return "Gerilim %d%%" % roundi(pull.length() / MAX_PULL * 100.0)
+	var pct := roundi(clampf((pull.length() - REST_PULL.length()) / (MAX_PULL - REST_PULL.length()), 0.0, 1.0) * 100.0)
+	return "Gerilim %d%%" % pct if pulling else "Parmağını koy ve geri çek"
 
 
 func hint() -> String:
-	return "Aşağı sürükle: ger   •   Yana: nişan   •   FIRLAT: bırak"
+	return "Geri çek (aşağı), yönü yana ayarla, bırak: atar"

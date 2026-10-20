@@ -37,6 +37,10 @@ Tüm kayıtlar Freesound.org, **Creative Commons 0**. İşlenmiş hâlleri (kesm
 - [Circular Saw by derjuli](https://freesound.org/people/derjuli/sounds/448133/) — derjuli
 - [Saw Cutting by BrainClaim](https://freesound.org/people/BrainClaim/sounds/267636/) — BrainClaim
 - [R01-04-Catapult Launch.wav by craigsmith](https://freesound.org/people/craigsmith/sounds/479922/) — craigsmith
+- [Countryside Ambience Spring by Kinoton](https://freesound.org/people/Kinoton/sounds/514550/) — Kinoton
+- [Countryside by brunoboselli](https://freesound.org/people/brunoboselli/sounds/458113/) — brunoboselli
+- [rock slide.wav by 21100495](https://freesound.org/people/21100495/sounds/655368/) — 21100495
+- [Rockslide_1.wav by NinjaSharkStudios](https://freesound.org/people/NinjaSharkStudios/sounds/608957/) — NinjaSharkStudios
 - [Slingshot 1.wav by olver](https://freesound.org/people/olver/sounds/513934/) — olver
 - [Slingshot 2.wav by olver](https://freesound.org/people/olver/sounds/513933/) — olver
 - [Slingshot sound by K27K_Mike](https://freesound.org/people/K27K_Mike/sounds/853649/) — K27K_Mike

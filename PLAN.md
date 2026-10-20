@@ -1,0 +1,47 @@
+# Geliştirme planı (kademeli)
+
+Kural: temel oynanış oturmadan harita/görev sistemine geçilmez. Her aşama sonunda
+otomatik test + ekran görüntüsü + commit + ZIP.
+
+## Aşama 1 — Kontrol ve his düzeltmeleri  ✅ (v0.4)
+- [x] Sapan: çek-bırak. Ne kadar geri çekilirse o kadar güç; parmak kalkınca kendiliğinden atar. Buton gerekmez.
+- [x] Mermi boyutu 5 kademe: ÇOK KÜÇÜK, KÜÇÜK, ORTA, BÜYÜK, DEV.
+- [x] Çevre sesi değişti (sert rüzgâr yerine yumuşak kır ambiyansı, düşük seviye).
+- [x] Dikey ve yatay ekran: arayüz yönlendirmeye göre yeniden dizilir, kamera görüş açısı uyarlanır.
+- [x] Hedef yerleşimi: her fırlatıcının önünde kendi düzenli şeridi (dağınık taşlar kaldırıldı).
+
+## Aşama 2 — Dev kale  ✅ (v0.4)
+- [x] Ayrı harita: tek, devasa taş kale (surlar, 4 kule, iç kale/donjon, mazgallar).
+- [x] Taş bloklar birikimli hasar alır: aynı yere tekrar tekrar vurdukça çatlar ve kopar. Hedef: 20–30 iyi atışta yıkım.
+- [x] Sağlam bloklar tek MultiMesh ile çizilir (yüzlerce blok ≈ birkaç draw call).
+- [x] HARİTA butonu: Test alanı / Kale.
+
+## Aşama 3 — Fizik derinliği ve yeni obje türleri
+- Malzeme çeşitliliği: ahşap kiriş (kırılınca ikiye ayrılır), cam (paramparça), çelik (eğilmez, ağır), taş.
+- Bina kat döşemeleri ve iç kolonlar (çöküş daha gerçekçi: pancake collapse).
+- Yeni objeler: araçlar (araba, kamyon), ahşap kule, köprü, su kulesi, elektrik direkleri, ağaçlar.
+- Moloz parçalarının ikinci kez kırılması (büyük parça yere çarpınca bölünür).
+
+## Aşama 4 — Rampa ve fırlatıcı çeşitleri
+- Rampalar: kıvrımlı, atlama (kicker), spiral, kayak atlama, çift şeritli.
+- Yeni fırlatıcı/araçlar: sarkaçlı yıkım vinci, buldozer, roket kızağı.
+- Yeni mermi: zincirli gülle, kesici disk (çoklu), yapışkan bomba.
+
+## Aşama 5 — Görevler ve haritalar
+- Görev türleri: X atışta Y% yıkım, belirli hedefi düşür, zincirleme çöküş, süre.
+- Yıldız puanı, ilerleme kaydı.
+- Haritalar: şehir bloğu, liman (konteynerler), kale kuşatması, maden ocağı.
+
+## Aşama 6 — Grafik
+- Daha iyi gökyüzü/ışık (gün saati), toz/duman kalitesi, yumuşak gölgeler.
+- Çatlak dokuları, decal izleri (çarpma lekesi), kırık kenar detayı.
+- Bitki örtüsü (çim kümeleri, çalılar – MultiMesh), uzak manzara.
+
+## Aşama 7 — Ses
+- Katmanlı çarpma sesleri (malzeme × kütle × hız), uzaklık gecikmesi, yankı bölgeleri.
+- Taş kale için taş kırılma/çökme kayıtları, ahşap gıcırtı, metal gürültü.
+
+## Aşama 8 — Optimizasyon ve yayın hazırlığı
+- Gerçek cihazda profil (hedef 60 FPS orta segment).
+- Moloz havuzu, uzak parçaların uykuya alınması, LOD, gölge mesafeleri.
+- Menü, ayarlar, kayıt, Play Store paketleme.

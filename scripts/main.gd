@@ -9,11 +9,17 @@ const RAMP_SLOPE := 150.0
 const RAMP_RUNOUT := 25.0
 const MAX_PROJECTILES := 5
 const SIZES := [
-	{"name": "KÜÇÜK", "k": 0.7},
+	{"name": "ÇOK KÜÇÜK", "k": 0.5},
+	{"name": "KÜÇÜK", "k": 0.75},
 	{"name": "ORTA", "k": 1.0},
 	{"name": "BÜYÜK", "k": 1.4},
+	{"name": "DEV", "k": 2.2},
 ]
 const QUALITY := ["DÜŞÜK", "ORTA", "YÜKSEK"]
+const MAPS := {"test": "TEST ALANI", "castle": "KALE"}
+
+## Sahne yeniden yüklendiğinde de korunur
+static var map_name := "test"
 
 var camera: Camera3D
 var hud: CanvasLayer
@@ -24,7 +30,7 @@ var launcher: Launcher
 var projectiles: Array[Projectile] = []
 var current: Projectile
 var ammo_index := 0
-var size_index := 1
+var size_index := 2
 var quality := 1
 var _touches := {}
 var _stat_timer := 0.0
@@ -38,7 +44,13 @@ func _ready() -> void:
 	WorldBuilder.build_ground(self)
 	WorldBuilder.build_ramp(self, RAMP_W, RAMP_H, RAMP_FLAT, RAMP_SLOPE, RAMP_RUNOUT)
 	_build_launchers()
-	_build_targets()
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--map="):
+			map_name = a.get_slice("=", 1)
+	if map_name == "castle":
+		_build_castle()
+	else:
+		_build_targets()
 	_scatter_decor()
 
 	camera = preload("res://scripts/game_camera.gd").new()
@@ -63,6 +75,13 @@ func _ready() -> void:
 		Engine.time_scale = 0.3 if on else 1.0
 		Sfx.set_slow_motion(on))
 	hud.quality_pressed.connect(func() -> void: _apply_quality((quality + 1) % QUALITY.size()))
+	hud.set_map_name(MAPS[map_name])
+	hud.map_pressed.connect(func() -> void:
+		var keys := MAPS.keys()
+		map_name = keys[(keys.find(map_name) + 1) % keys.size()]
+		Engine.time_scale = 1.0
+		Sfx.set_slow_motion(false)
+		get_tree().reload_current_scene())
 
 	_destructibles = get_tree().get_nodes_in_group("destructible")
 	var args := OS.get_cmdline_user_args()
@@ -162,48 +181,75 @@ func _add_launcher(l: Launcher, pos: Vector3) -> void:
 	launchers.append(l)
 
 
+## Her fırlatıcının önünde kendi düzenli hedef şeridi:
+##   RAMPA (x=0)      : bariyer sırası -> tuğla duvar -> eski bina -> panel apartman
+##   TOP (x=-22)      : sandık piramidi + variller -> taş yığını -> trafo binası
+##   MANCINIK (x=-42) : dönen pervane -> konteyner yığını -> kule blok
+##   SAPAN (x=42)     : sarkaç -> konteyner yığını -> fabrika
 func _build_targets() -> void:
 	var z0 := RAMP_FLAT + RAMP_SLOPE + RAMP_RUNOUT
 
-	# Beton bariyer sırası ve tuğla duvar (rampa hattı)
+	# RAMPA şeridi
 	for i in 5:
 		_prop("jersey", Vector3(-8.0 + i * 4.0, 0, z0 + 8.0), 0.0, "concrete", 1800.0)
-	_brick_wall(Vector3(0, 0, z0 + 20.0), 18.2, 4, WorldBuilder.pbr("red_brick_03", 0.45))
+	_brick_wall(Vector3(0, 0, z0 + 22.0), 18.2, 4, WorldBuilder.pbr("red_brick_03", 0.45))
+	_building("oldbuilding", "brick", Vector3(0.0, 0, z0 + 50.0), 0.0)
+	_building("soviet", "concrete", Vector3(0.0, 0, z0 + 105.0), 90.0)
 
-	# Hareketli engeller
+	# TOP şeridi
+	var cx := -22.0
+	for row in 4:
+		for i in 4 - row:
+			_prop("crate", Vector3(cx - 1.9 + (i + row * 0.5) * 1.25, row * 0.47, z0 + 18.0), 90.0, "wood", 45.0)
+	for i in 12:
+		_prop("barrel", Vector3(cx - 1.0 + (i % 4) * 0.64, (i / 8) * 0.9, z0 + 26.0 + ((i % 8) / 4) * 0.64), 0.0, "metal", 60.0)
+	_stone_pile(Vector3(cx, 0, z0 + 38.0))
+	_building("booth", "brick", Vector3(cx, 0, z0 + 58.0), 90.0)
+
+	# MANCINIK şeridi
+	var tx := -42.0
 	var mill := Windmill.new()
-	mill.position = Vector3(-42, 0, z0 + 18.0)
+	mill.position = Vector3(tx, 0, z0 + 16.0)
 	add_child(mill)
+	_container_stack(Vector3(tx, 0, z0 + 42.0))
+	_building("tower", "concrete", Vector3(tx, 0, z0 + 80.0), 0.0)
+
+	# SAPAN şeridi
+	var sx := 42.0
 	var pend := Pendulum.new()
-	pend.position = Vector3(42, 0, z0 + 12.0)
+	pend.position = Vector3(sx, 0, z0 + 12.0)
 	add_child(pend)
+	_container_stack(Vector3(sx, 0, z0 + 42.0))
+	_building("factory", "brick", Vector3(sx, 0, z0 + 78.0), -90.0)
 
-	# Konteyner yığınları
-	for base in [Vector3(-22, 0, z0 + 40.0), Vector3(24, 0, z0 + 44.0)]:
-		for row in 2:
-			for i in 2 - row:
-				_container(base + Vector3((i - (1 - row) * 0.5) * 2.6, row * 2.6, 0), randf() * 4.0 - 2.0)
 
-	# Sandık yığını ve variller
+## Dev kale haritası: yalnız kale (+ önünde birkaç bariyer)
+func _build_castle() -> void:
+	var z0 := RAMP_FLAT + RAMP_SLOPE + RAMP_RUNOUT
+	var f := Fortress.new()
+	f.setup_castle()
+	f.position = Vector3(0, 0, z0 + 50.0)
+	add_child(f)
+	_buildings.append(f)
+
+
+## 3 tabanlı konteyner piramidi (3 + 2 + 1)
+func _container_stack(base: Vector3) -> void:
 	for row in 3:
 		for i in 3 - row:
-			_prop("crate", Vector3(-7.5 + (i - (2 - row) * 0.5) * 1.25, row * 0.47, z0 + 32.0), 90.0, "wood", 45.0)
-	for i in 9:
-		_prop("barrel", Vector3(7.0 + (i % 3) * 0.62, 0, z0 + 30.0 + (i / 3) * 0.62), randf() * 360.0, "metal", 60.0)
+			_container(base + Vector3((i - (2 - row) * 0.5) * 2.62, row * 2.6, 0), 0.0)
 
-	# Dağınık taşlar (dinamik)
+
+## Taş yığını: büyükler altta, küçükler üstte
+func _stone_pile(center: Vector3) -> void:
 	var rng := RandomNumberGenerator.new()
-	rng.seed = 5
-	for i in 14:
-		var p := Vector3(rng.randf_range(-45, 45), 0, z0 + rng.randf_range(30, 80))
-		_stone(p, rng.randf_range(0.5, 1.3), rng)
-
-	# Gerçek binalar
-	_building("oldbuilding", "brick", Vector3(0.0, 0, z0 + 52.0), 0.0)
-	_building("booth", "brick", Vector3(-20.0, 0, z0 + 64.0), 90.0)
-	_building("tower", "concrete", Vector3(-42.0, 0, z0 + 82.0), 0.0)
-	_building("factory", "brick", Vector3(42.0, 0, z0 + 78.0), -90.0)
-	_building("soviet", "concrete", Vector3(4.0, 0, z0 + 110.0), 90.0)
+	rng.seed = 7
+	for layer in 3:
+		var n := 6 - layer * 2
+		for i in n:
+			var a := TAU * i / n + layer * 0.5
+			var r := 1.8 - layer * 0.7
+			_stone(center + Vector3(cos(a) * r, layer * 0.9, sin(a) * r), 1.3 - layer * 0.3, rng)
 
 
 func _building(model_name: String, inner: String, pos: Vector3, rot_y: float) -> void:
@@ -373,7 +419,7 @@ func _reload() -> void:
 	current = p
 	hud.set_ammo_name(p.display_name())
 	hud.set_size_name(SIZES[size_index]["name"])
-	hud.set_ready(true, launcher.hint())
+	hud.set_ready(true, launcher.hint(), launcher.uses_button())
 	camera.follow(launcher.view_target, launcher.view_distance, launcher.global_rotation.y)
 	camera.snap()
 
@@ -387,7 +433,7 @@ func _on_fire_pressed() -> void:
 
 func _on_fired(p: Projectile) -> void:
 	current = p
-	hud.set_ready(false, "")
+	hud.set_ready(false, "", true)
 	camera.follow(p, 14.0 + p.radius * 2.0)
 
 
@@ -423,6 +469,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			if hud.is_over_ui(event.position):
 				return
 			_touches[event.index] = {"pos": event.position, "start": event.position, "t": Time.get_ticks_msec()}
+			if _touches.size() == 1 and launcher.is_ready():
+				launcher.press()
 		elif _touches.has(event.index):
 			var tch: Dictionary = _touches[event.index]
 			_touches.erase(event.index)
@@ -479,10 +527,26 @@ func _autotest() -> void:
 		await _shots()
 		get_tree().quit()
 		return
+	for a in args:
+		if a.begins_with("--siege-synth="):
+			await _siege_synth(int(a.get_slice("=", 1)), 12.0e6)
+			get_tree().quit()
+			return
+		if a.begins_with("--siege="):
+			await _siege(int(a.get_slice("=", 1)))
+			get_tree().quit()
+			return
 	if launcher is Slingshot:
-		(launcher as Slingshot).pull = Vector3(0, -2.5, -8.5)
-		launcher.load_projectile(current)
-	launcher.fire()
+		# Gerçek dokunma akışı: bas -> geri çek (sürükle) -> bırak (kendiliğinden atar)
+		var sl := launcher as Slingshot
+		var vs := get_viewport().get_visible_rect().size
+		sl.press()
+		for k in 20:
+			sl.drag(Vector2(0, 14), vs)
+		print("Sapan gerilimi: ", sl.info())
+		sl.release(0.0)
+	else:
+		launcher.fire()
 	if "--trace" in args:
 		for f in 150:
 			await get_tree().physics_frame
@@ -517,8 +581,81 @@ func _autotest() -> void:
 	get_tree().quit()
 
 
+## Yapay kuşatma: kalenin dış yüzündeki rastgele alçak bloklara E enerjili darbe
+func _siege_synth(n: int, energy: float) -> void:
+	var f: Building = _buildings[0]
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 3
+	var center := f.global_position + Vector3.UP * 5.0
+	for i in n:
+		var cands := f.chunks.filter(func(c: Destructible) -> bool: return c.intact and c.layer <= 3)
+		if cands.is_empty():
+			break
+		# Dışa yakın olanlardan seç (merkeze en uzak %40)
+		cands.sort_custom(func(a: Destructible, b: Destructible) -> bool: return a.global_position.distance_squared_to(center) > b.global_position.distance_squared_to(center))
+		var t: Destructible = cands[rng.randi() % maxi(1, int(cands.size() * 0.4))]
+		var dir := (center - t.global_position)
+		dir.y = 0
+		Building.strike(get_world_3d(), t.global_position - dir.normalized() * 1.5, energy, dir.normalized())
+		for k in 60 * 4:
+			await get_tree().physics_frame
+		print("darbe %2d  sağlam blok %%%d" % [i + 1, roundi(f.intact_ratio() * 100.0)])
+
+
+## Kuşatma testi: N atış, her atıştan sonra kalenin sağlam blok oranı
+func _siege(n: int) -> void:
+	var t0 := Time.get_ticks_usec()
+	var aims := [-4.5, 4.5, -2.5, 2.5, 0.0]
+	for i in n:
+		for p in projectiles.duplicate():
+			if is_instance_valid(p) and p.launched:
+				projectiles.erase(p)
+				p.queue_free()
+		if not launcher.is_ready():
+			_reload()
+		if launcher is RampLauncher:
+			var r := launcher as RampLauncher
+			r.aim_x = aims[i % aims.size()]
+			r.drag(Vector2.ZERO, Vector2.ONE)
+		await get_tree().physics_frame
+		launcher.fire()
+		for f in 60 * 14:
+			await get_tree().physics_frame
+		var b: Building = _buildings[0]
+		var awake := 0
+		for c in b.chunks:
+			if not c.intact and not c.freeze:
+				awake += 1
+		print("atış %2d  sağlam blok %%%d  hareketli blok=%d" % [i + 1, roundi(b.intact_ratio() * 100.0), awake])
+	print("TOPLAM işlem: %.1f sn (%d atış × 14 sn)" % [(Time.get_ticks_usec() - t0) / 1e6, n])
+
+
 func _shots() -> void:
 	var z0 := RAMP_FLAT + RAMP_SLOPE + RAMP_RUNOUT
+	if map_name == "castle":
+		camera.target = null
+		var cviews := [[Vector3(-60, 30, 150), Vector3(0, 8, z0 + 50)], [Vector3(0, 8, 175), Vector3(0, 10, z0 + 50)]]
+		for k in cviews.size():
+			camera.global_position = cviews[k][0]
+			camera.look_at(cviews[k][1])
+			await get_tree().process_frame
+			await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png("user://shot_castle%d.png" % k)
+		for i in 8:
+			var f: Building = _buildings[0]
+			var cands := f.chunks.filter(func(c: Destructible) -> bool: return c.intact and c.layer <= 2 and c.global_position.z < f.global_position.z - 20.0)
+			var t: Destructible = cands[(i * 7) % cands.size()]
+			Building.strike(get_world_3d(), t.global_position + Vector3(0, 0, -1.5), 12.0e6, Vector3(0, 0, 1))
+			for k in 3:
+				await get_tree().physics_frame
+		for k in 30:
+			await get_tree().physics_frame
+		camera.global_position = cviews[0][0]
+		camera.look_at(cviews[0][1])
+		await get_tree().process_frame
+		await get_tree().process_frame
+		get_viewport().get_texture().get_image().save_png("user://shot_castle2.png")
+		return
 	var views := [
 		[Vector3(-30, 9, 112), Vector3(-42, 5, 125)],
 		[Vector3(30, 7, 128), Vector3(42, 4, 142)],

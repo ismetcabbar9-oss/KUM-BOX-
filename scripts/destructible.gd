@@ -7,6 +7,7 @@ extends RigidBody3D
 ## Temas izleme (contact_monitor) kullanılmaz; darbeler hız değişiminden algılanır.
 
 signal woke(body: Destructible)
+signal released(body: Destructible)
 
 ## "concrete", "brick", "wood", "metal", "stone"
 var material_kind := "concrete"
@@ -19,6 +20,8 @@ var hp := 0.0
 var _prev_v := Vector3.ZERO
 var _cooldown := 0.0
 var _rest_time := 0.0
+var _pending_impulse := Vector3.ZERO
+var _pending_offset := Vector3.ZERO
 
 
 func configure(kind: String, body_mass: float, friction := 0.8) -> void:
@@ -87,8 +90,10 @@ func release(impulse := Vector3.ZERO, at := Vector3.ZERO) -> void:
 	_prev_v = Vector3.ZERO
 	_rest_time = 0.0
 	set_physics_process(true)
-	if impulse != Vector3.ZERO:
-		apply_impulse(impulse, at - global_position)
+	# Statikten dinamiğe geçiş fizik sunucusunda bir sonraki adımda olur: itkiyi o zaman uygula
+	_pending_impulse = impulse
+	_pending_offset = at - global_position
+	released.emit(self)
 
 
 func _on_sleeping_changed() -> void:
@@ -101,6 +106,12 @@ func _on_sleeping_changed() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if _pending_impulse != Vector3.ZERO:
+		# Doğrudan hız ver: statikten yeni çözülen gövdede itki güvenilir uygulanmıyor
+		linear_velocity += _pending_impulse / mass
+		angular_velocity += (_pending_offset.cross(_pending_impulse) / mass) * 0.15
+		_pending_impulse = Vector3.ZERO
+		return
 	var v := linear_velocity
 	var slow := v.length_squared() < 1.0 and angular_velocity.length_squared() < 1.0
 	if slow:

@@ -30,6 +30,16 @@ func rolling() -> bool:
 	return false
 
 
+## Parmak ekrana değdi (fırlatıcı hazırken)
+func press() -> void:
+	pass
+
+
+## FIRLAT butonu kullanılıyor mu (sapan: hayır, çek-bırak)
+func uses_button() -> bool:
+	return true
+
+
 func drag(_relative: Vector2, _viewport_size: Vector2) -> void:
 	pass
 

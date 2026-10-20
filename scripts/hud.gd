@@ -8,6 +8,7 @@ signal reset_pressed
 signal size_pressed
 signal slowmo_toggled(on: bool)
 signal quality_pressed
+signal map_pressed
 
 var speed_label: Label
 var destroy_label: Label
@@ -19,8 +20,13 @@ var info_label: Label
 var hint_label: Label
 var fps_label: Label
 var quality_button: Button
+var map_button: Button
 var credits_panel: PanelContainer
 var _slowmo := false
+var buttons: GridContainer
+var hint_box: MarginContainer
+var portrait := false
+var _stats_spacer: Control
 
 
 func _ready() -> void:
@@ -62,6 +68,10 @@ func _ready() -> void:
 	stats.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	stats.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	margin.add_child(stats)
+	_stats_spacer = Control.new()
+	_stats_spacer.custom_minimum_size = Vector2(0, 70)
+	_stats_spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stats.add_child(_stats_spacer)
 	speed_label = Label.new()
 	speed_label.add_theme_font_size_override("font_size", 40)
 	stats.add_child(speed_label)
@@ -81,6 +91,9 @@ func _ready() -> void:
 	top.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	top.add_theme_constant_override("separation", 10)
 	margin.add_child(top)
+	map_button = _button(top, "HARİTA", func() -> void: map_pressed.emit())
+	map_button.custom_minimum_size = Vector2(190, 56)
+	map_button.add_theme_font_size_override("font_size", 20)
 	quality_button = _button(top, "GRAFİK: ORTA", func() -> void: quality_pressed.emit())
 	quality_button.custom_minimum_size = Vector2(200, 56)
 	quality_button.add_theme_font_size_override("font_size", 20)
@@ -89,10 +102,12 @@ func _ready() -> void:
 	lic.add_theme_font_size_override("font_size", 20)
 
 	# Sağ: aksiyon butonları
-	var buttons := VBoxContainer.new()
+	buttons = GridContainer.new()
+	buttons.columns = 1
 	buttons.size_flags_horizontal = Control.SIZE_SHRINK_END
 	buttons.size_flags_vertical = Control.SIZE_SHRINK_END
-	buttons.add_theme_constant_override("separation", 10)
+	buttons.add_theme_constant_override("h_separation", 10)
+	buttons.add_theme_constant_override("v_separation", 10)
 	margin.add_child(buttons)
 	fire_button = _button(buttons, "FIRLAT", func() -> void: fire_pressed.emit())
 	fire_button.custom_minimum_size = Vector2(250, 104)
@@ -112,7 +127,14 @@ func _ready() -> void:
 	hint_label.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	hint_label.size_flags_vertical = Control.SIZE_SHRINK_END
 	hint_label.add_theme_font_size_override("font_size", 24)
-	margin.add_child(hint_label)
+	hint_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hint_box = MarginContainer.new()
+	hint_box.set_anchors_preset(Control.PRESET_FULL_RECT)
+	hint_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hint_box.add_child(hint_label)
+	margin.add_child(hint_box)
+	get_viewport().size_changed.connect(_relayout)
+	_relayout()
 
 	# Lisans paneli (CC-BY atıfları oyunda gösterilmeli)
 	credits_panel = PanelContainer.new()
@@ -159,8 +181,34 @@ func set_stats(speed_kmh: float, destroyed: int, total: int) -> void:
 	destroy_label.text = "Yıkım: %%%d  (%d/%d)" % [roundi(pct), destroyed, total]
 
 
+## Dikey ekranda butonlar altta 3 sütunlu ızgara, ipucu üstte; yatayda sağda tek sütun.
+func _relayout() -> void:
+	# Yönlendirmeye göre temel çözünürlük: arayüz her iki yönde de aynı fiziksel boyutta
+	var win := get_window()
+	var real := win.size
+	portrait = real.y > real.x
+	var base := Vector2i(720, 1280) if portrait else Vector2i(1280, 720)
+	if win.content_scale_size != base:
+		win.content_scale_size = base
+		return  # boyut değişimi bu fonksiyonu yeniden çağırır
+	var vs := get_viewport().get_visible_rect().size
+	buttons.columns = 3 if portrait else 1
+	buttons.size_flags_horizontal = Control.SIZE_SHRINK_CENTER if portrait else Control.SIZE_SHRINK_END
+	var w := (vs.x - 56.0 - 20.0) / 3.0 if portrait else 250.0
+	for b: Button in buttons.get_children():
+		b.custom_minimum_size = Vector2(w, 84.0 if b == fire_button else 66.0) if portrait else Vector2(250, 104.0 if b == fire_button else 62.0)
+	hint_label.size_flags_vertical = Control.SIZE_SHRINK_BEGIN if portrait else Control.SIZE_SHRINK_END
+	hint_label.custom_minimum_size.x = minf(vs.x - 80.0, 900.0)
+	hint_box.add_theme_constant_override("margin_top", 290 if portrait else 0)
+	_stats_spacer.visible = portrait
+
+
 func set_fps(fps: int, extra: String) -> void:
 	fps_label.text = "%d FPS  %s" % [fps, extra]
+
+
+func set_map_name(n: String) -> void:
+	map_button.text = n
 
 
 func set_quality_name(n: String) -> void:
@@ -186,8 +234,9 @@ func _credits_text() -> String:
 	return out
 
 
-func set_ready(ready: bool, hint: String) -> void:
-	fire_button.text = "FIRLAT" if ready else "YÜKLE"
+func set_ready(ready: bool, hint: String, button_active := true) -> void:
+	fire_button.text = ("FIRLAT" if button_active else "ÇEK-BIRAK") if ready else "YÜKLE"
+	fire_button.disabled = ready and not button_active
 	hint_label.text = hint
 	hint_label.visible = ready and hint != ""
 

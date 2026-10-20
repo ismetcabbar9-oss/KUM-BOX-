@@ -41,9 +41,9 @@ func _ready() -> void:
 		add_child(p)
 		_pool.append(p)
 	_ambient = AudioStreamPlayer.new()
-	_ambient.stream = load(S + "wind_loop.ogg")
+	_ambient.stream = load(S + "ambient_loop.ogg")
 	_ambient.bus = "Ambient"
-	_ambient.volume_db = -10.0
+	_ambient.volume_db = -14.0
 	add_child(_ambient)
 	_ambient.play()
 
