@@ -27,6 +27,7 @@ func _ready() -> void:
 		"sling": _load_set("sling_", 3),
 		"cannon": _load_set("cannon_", 2),
 		"creak": _load_set("creak_", 2),
+		"stone_crash": _load_set("stone_crash_", 2),
 	}
 	# Tuğla ve taş da beton kayıtlarını kullanır (perde farkıyla)
 	_streams["brick"] = _streams["concrete"]
@@ -139,8 +140,8 @@ func impact(kind: String, pos: Vector3, strength: float) -> void:
 		crash(pos)
 
 
-func crash(pos: Vector3) -> void:
-	_play("crash", pos, 4.0, randf_range(0.9, 1.05))
+func crash(pos: Vector3, set_name := "crash") -> void:
+	_play(set_name, pos, 4.0, randf_range(0.9, 1.05))
 
 
 func glass(pos: Vector3) -> void:

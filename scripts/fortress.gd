@@ -29,6 +29,7 @@ func setup_castle() -> void:
 	# Taş örgü: oyuğun üstünde 1-2 sıra kemer gibi tutunur, daha yukarısı çöker
 	max_span = 1.6
 	hang_up = 0.6
+	crash_sound = "stone_crash"
 	_material = StandardMaterial3D.new()
 	var t := "res://assets/textures/castle_wall_slates_%s_1k.jpg"
 	_material.albedo_texture = load(t % "diff")

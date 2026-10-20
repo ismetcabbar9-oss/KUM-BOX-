@@ -26,6 +26,7 @@ var kind := "concrete"
 var max_span := float(MAX_SPAN)
 ## Asılı bir parçanın üstündeki her sıranın ek maliyeti (0 = sınırsız taşıma)
 var hang_up := 0.0
+var crash_sound := "crash"
 var _by_name := {}
 var _intact_mesh: MeshInstance3D
 var _chunk_meshes: Array[MeshInstance3D] = []
@@ -128,7 +129,7 @@ func _apply_damage(point: Vector3, energy: float, direction: Vector3, radius: fl
 	if used > 0.0:
 		Sfx.debris(point, 10.0)
 		if used > 400000.0:
-			Sfx.crash(point)
+			Sfx.crash(point, crash_sound)
 		_mark_support_dirty()
 	return used
 
@@ -190,7 +191,7 @@ func _check_support() -> void:
 			d.release(Vector3(randf_range(-1, 1), 0, randf_range(-1, 1)) * d.mass * 0.4, d.global_position + Vector3.UP)
 			fell += 1
 	if fell > 6:
-		Sfx.crash(global_position + Vector3.UP * 6.0)
+		Sfx.crash(global_position + Vector3.UP * 6.0, crash_sound)
 
 
 func intact_ratio() -> float:
