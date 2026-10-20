@@ -12,7 +12,7 @@ dest_files=["res://.godot/imported/roll_loop.ogg-9689a73b47059e73f2cc62e7036146c
 
 [params]
 
-loop=false
+loop=true
 loop_offset=0
 bpm=0
 beat_count=0

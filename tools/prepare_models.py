@@ -29,12 +29,15 @@ SKETCHFAB = {
     "oldbuilding": ("1f304c6e56324c19955a18aa79b15b9f", 1024),
     "factory": ("4e033f90eaaa4e68931af60f0309f537", 2048),
     "booth": ("9d9a74a55f384b6cb80f7453e951f6c8", 1024),
-    "warehouse": ("316a80fb28c04e14933b8b1b40187c90", 2048),
     "rock_hero": ("b66d5b63deb447299ca3effa904bc789", 1024),
     "rock_boulder2": ("70fd18ec2a4a4d378d9d8c1ba878dcbc", 1024),
     "rock_medium": ("54cef4772d2a442680d5f18dcb2f93e7", 1024),
     "rocks4": ("a3db6dd1c31b4c63a8ce372d470bdf5d", 1024),
     "jersey": ("b52246c9611a42a99a03b425535a0237", 1024),
+    "smooth_rocks": ("4503b42e55fd4fd4b42f0f18abc43298", 1024),
+    "border_stone": ("ed49866dbdfd4b52aad3edaabc63c70f", 1024),
+    "saw": ("98d471f4e3ec40ec97703867e04a0a61", 1024),
+    "container": ("979114d6e1754f5591735ef3e5e203d4", 1024),
 }
 POLYHAVEN = {"barrel": "Barrel_01", "crate": "wooden_crate_02"}
 

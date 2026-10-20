@@ -31,10 +31,21 @@ func pinch(factor: float) -> void:
 	zoom = clampf(zoom / factor, 0.45, 3.0)
 
 
+## Yeni hedef: istasyon bakışı ya da mermi.
+func follow(node: Node3D, dist: float, heading := NAN) -> void:
+	target = node
+	distance = dist
+	if not is_nan(heading):
+		_heading = heading
+	user_yaw = 0.0
+	user_pitch = 0.0
+
+
 func snap() -> void:
 	if target:
 		_look = target.global_position
-		_heading = 0.0
+		var desired := target.global_position + Vector3(-sin(_heading), 0.32, -cos(_heading)) * distance
+		global_position = desired
 
 
 func _process(delta: float) -> void:
@@ -55,8 +66,8 @@ func _process(delta: float) -> void:
 		user_yaw = lerp_angle(user_yaw, 0.0, clampf(real_dt * 0.8, 0.0, 1.0))
 		user_pitch = lerpf(user_pitch, 0.0, clampf(real_dt * 0.8, 0.0, 1.0))
 	var r := 1.0
-	if target is Rock:
-		r = (target as Rock).radius
+	if target is Projectile:
+		r = maxf((target as Projectile).radius, 0.6)
 	var dist := (distance + r * 3.0) * zoom
 	var yaw := _heading + user_yaw
 	var pitch := 0.32 + user_pitch

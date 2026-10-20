@@ -1,8 +1,9 @@
 extends CanvasLayer
 ## Dokunmatik arayüz: büyük butonlar, hız ve yıkım göstergesi.
 
-signal push_pressed
-signal new_rock_pressed
+signal fire_pressed
+signal launcher_pressed
+signal ammo_pressed
 signal reset_pressed
 signal size_pressed
 signal slowmo_toggled(on: bool)
@@ -11,7 +12,10 @@ signal quality_pressed
 var speed_label: Label
 var destroy_label: Label
 var size_button: Button
-var push_button: Button
+var fire_button: Button
+var launcher_button: Button
+var ammo_button: Button
+var info_label: Label
 var hint_label: Label
 var fps_label: Label
 var quality_button: Button
@@ -63,6 +67,10 @@ func _ready() -> void:
 	stats.add_child(speed_label)
 	destroy_label = Label.new()
 	stats.add_child(destroy_label)
+	info_label = Label.new()
+	info_label.add_theme_font_size_override("font_size", 24)
+	info_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.45))
+	stats.add_child(info_label)
 	fps_label = Label.new()
 	fps_label.add_theme_font_size_override("font_size", 18)
 	stats.add_child(fps_label)
@@ -84,13 +92,14 @@ func _ready() -> void:
 	var buttons := VBoxContainer.new()
 	buttons.size_flags_horizontal = Control.SIZE_SHRINK_END
 	buttons.size_flags_vertical = Control.SIZE_SHRINK_END
-	buttons.add_theme_constant_override("separation", 14)
+	buttons.add_theme_constant_override("separation", 10)
 	margin.add_child(buttons)
-	push_button = _button(buttons, "İT", func() -> void: push_pressed.emit())
-	push_button.custom_minimum_size = Vector2(220, 110)
-	push_button.add_theme_font_size_override("font_size", 40)
-	_button(buttons, "YENİ KAYA", func() -> void: new_rock_pressed.emit())
-	size_button = _button(buttons, "BOYUT: ORTA", func() -> void: size_pressed.emit())
+	fire_button = _button(buttons, "FIRLAT", func() -> void: fire_pressed.emit())
+	fire_button.custom_minimum_size = Vector2(250, 104)
+	fire_button.add_theme_font_size_override("font_size", 38)
+	launcher_button = _button(buttons, "RAMPA", func() -> void: launcher_pressed.emit())
+	ammo_button = _button(buttons, "GRANİT", func() -> void: ammo_pressed.emit())
+	size_button = _button(buttons, "ORTA", func() -> void: size_pressed.emit())
 	var slow := _button(buttons, "AĞIR ÇEKİM", func() -> void: pass)
 	slow.toggle_mode = true
 	slow.toggled.connect(func(on: bool) -> void: slowmo_toggled.emit(on))
@@ -135,7 +144,8 @@ func _ready() -> void:
 func _button(parent: Control, text: String, cb: Callable) -> Button:
 	var b := Button.new()
 	b.text = text
-	b.custom_minimum_size = Vector2(220, 72)
+	b.custom_minimum_size = Vector2(250, 62)
+	b.add_theme_font_size_override("font_size", 22)
 	b.focus_mode = Control.FOCUS_NONE
 	b.pressed.connect(cb)
 	b.add_to_group("hud_button")
@@ -176,10 +186,22 @@ func _credits_text() -> String:
 	return out
 
 
-func set_aiming(aiming: bool) -> void:
-	hint_label.visible = aiming
-	push_button.disabled = not aiming
-	push_button.modulate.a = 1.0 if aiming else 0.4
+func set_ready(ready: bool, hint: String) -> void:
+	fire_button.text = "FIRLAT" if ready else "YÜKLE"
+	hint_label.text = hint
+	hint_label.visible = ready and hint != ""
+
+
+func set_info(text: String) -> void:
+	info_label.text = text
+
+
+func set_launcher_name(n: String) -> void:
+	launcher_button.text = n
+
+
+func set_ammo_name(n: String) -> void:
+	ammo_button.text = n
 
 
 func set_size_name(n: String) -> void:

@@ -1,16 +1,17 @@
 extends Node3D
-## Ana sahne: seviyeyi kurar, dokunmatik girdiyi, grafik kalitesini ve oyun durumunu yönetir.
+## Ana sahne: düz test haritası, fırlatıcı istasyonları, mermi seçimi, engeller,
+## dokunmatik girdi, grafik kalitesi ve otomatik test.
 
 const RAMP_W := 14.0
 const RAMP_H := 55.0
 const RAMP_FLAT := 14.0
 const RAMP_SLOPE := 150.0
 const RAMP_RUNOUT := 25.0
-const MAX_ROCKS := 4
-const ROCK_SIZES := [
-	{"name": "KÜÇÜK", "r": 1.2},
-	{"name": "ORTA", "r": 2.0},
-	{"name": "BÜYÜK", "r": 3.0},
+const MAX_PROJECTILES := 5
+const SIZES := [
+	{"name": "KÜÇÜK", "k": 0.7},
+	{"name": "ORTA", "k": 1.0},
+	{"name": "BÜYÜK", "k": 1.4},
 ]
 const QUALITY := ["DÜŞÜK", "ORTA", "YÜKSEK"]
 
@@ -18,11 +19,13 @@ var camera: Camera3D
 var hud: CanvasLayer
 var sun: DirectionalLight3D
 var env: Environment
-var rocks: Array[Rock] = []
-var current: Rock
+var launchers: Array[Launcher] = []
+var launcher: Launcher
+var projectiles: Array[Projectile] = []
+var current: Projectile
+var ammo_index := 0
 var size_index := 1
 var quality := 1
-var aim_x := 0.0
 var _touches := {}
 var _stat_timer := 0.0
 var _destructibles: Array[Node] = []
@@ -34,6 +37,7 @@ func _ready() -> void:
 	_build_environment()
 	WorldBuilder.build_ground(self)
 	WorldBuilder.build_ramp(self, RAMP_W, RAMP_H, RAMP_FLAT, RAMP_SLOPE, RAMP_RUNOUT)
+	_build_launchers()
 	_build_targets()
 	_scatter_decor()
 
@@ -43,13 +47,18 @@ func _ready() -> void:
 
 	hud = preload("res://scripts/hud.gd").new()
 	add_child(hud)
-	hud.push_pressed.connect(func() -> void: _launch(9.0))
-	hud.new_rock_pressed.connect(_spawn_rock)
+	hud.fire_pressed.connect(_on_fire_pressed)
+	hud.launcher_pressed.connect(func() -> void: _select_launcher((launchers.find(launcher) + 1) % launchers.size()))
+	hud.ammo_pressed.connect(func() -> void:
+		ammo_index = (ammo_index + 1) % Projectile.ORDER.size()
+		_reload_if_waiting())
+	hud.size_pressed.connect(func() -> void:
+		size_index = (size_index + 1) % SIZES.size()
+		_reload_if_waiting())
 	hud.reset_pressed.connect(func() -> void:
 		Engine.time_scale = 1.0
 		Sfx.set_slow_motion(false)
 		get_tree().reload_current_scene())
-	hud.size_pressed.connect(_cycle_size)
 	hud.slowmo_toggled.connect(func(on: bool) -> void:
 		Engine.time_scale = 0.3 if on else 1.0
 		Sfx.set_slow_motion(on))
@@ -62,9 +71,7 @@ func _ready() -> void:
 	elif not OS.has_feature("mobile"):
 		quality = 2
 	_apply_quality(quality)
-	_spawn_rock()
-	camera.global_position = current.global_position + Vector3(0, 8, -18)
-	camera.snap()
+	_select_launcher(0)
 	if "--autotest" in args:
 		_autotest()
 
@@ -77,7 +84,6 @@ func _apply_quality(q: int) -> void:
 	var vp := get_viewport()
 	match q:
 		0:
-			sun.shadow_enabled = true
 			sun.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
 			sun.directional_shadow_max_distance = 70.0
 			RenderingServer.directional_shadow_atlas_set_size(2048, true)
@@ -85,7 +91,6 @@ func _apply_quality(q: int) -> void:
 			vp.scaling_3d_scale = 0.7
 			env.glow_enabled = false
 		1:
-			sun.shadow_enabled = true
 			sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
 			sun.directional_shadow_max_distance = 140.0
 			RenderingServer.directional_shadow_atlas_set_size(2048, true)
@@ -93,7 +98,6 @@ func _apply_quality(q: int) -> void:
 			vp.scaling_3d_scale = 0.85
 			env.glow_enabled = true
 		2:
-			sun.shadow_enabled = true
 			sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
 			sun.directional_shadow_max_distance = 220.0
 			RenderingServer.directional_shadow_atlas_set_size(4096, true)
@@ -135,45 +139,76 @@ func _build_environment() -> void:
 	sun.rotation_degrees = Vector3(-38, 145, 0)
 	sun.light_energy = 1.6
 	sun.light_color = Color(1.0, 0.96, 0.9)
+	sun.shadow_enabled = true
 	sun.shadow_blur = 1.2
 	add_child(sun)
+
+
+func _build_launchers() -> void:
+	var ramp := RampLauncher.new()
+	ramp.height = RAMP_H
+	ramp.flat = RAMP_FLAT
+	ramp.width = RAMP_W
+	_add_launcher(ramp, Vector3.ZERO)
+	_add_launcher(Trebuchet.new(), Vector3(-42, 0, 120))
+	_add_launcher(Slingshot.new(), Vector3(42, 0, 140))
+	_add_launcher(AirCannon.new(), Vector3(-22, 0, 160))
+
+
+func _add_launcher(l: Launcher, pos: Vector3) -> void:
+	l.position = pos
+	add_child(l)
+	l.fired.connect(_on_fired)
+	launchers.append(l)
 
 
 func _build_targets() -> void:
 	var z0 := RAMP_FLAT + RAMP_SLOPE + RAMP_RUNOUT
 
-	# Beton bariyer sırası (aralıklı)
+	# Beton bariyer sırası ve tuğla duvar (rampa hattı)
 	for i in 5:
 		_prop("jersey", Vector3(-8.0 + i * 4.0, 0, z0 + 8.0), 0.0, "concrete", 1800.0)
-
-	# Tuğla duvar (şaşırtmalı örgü)
 	_brick_wall(Vector3(0, 0, z0 + 20.0), 18.2, 4, WorldBuilder.pbr("red_brick_03", 0.45))
+
+	# Hareketli engeller
+	var mill := Windmill.new()
+	mill.position = Vector3(-42, 0, z0 + 18.0)
+	add_child(mill)
+	var pend := Pendulum.new()
+	pend.position = Vector3(42, 0, z0 + 12.0)
+	add_child(pend)
+
+	# Konteyner yığınları
+	for base in [Vector3(-22, 0, z0 + 40.0), Vector3(24, 0, z0 + 44.0)]:
+		for row in 2:
+			for i in 2 - row:
+				_container(base + Vector3((i - (1 - row) * 0.5) * 2.6, row * 2.6, 0), randf() * 4.0 - 2.0)
 
 	# Sandık yığını ve variller
 	for row in 3:
 		for i in 3 - row:
-			_prop("crate", Vector3(-7.5 + (i - (2 - row) * 0.5) * 1.25, row * 0.47, z0 + 30.0), 90.0, "wood", 45.0)
+			_prop("crate", Vector3(-7.5 + (i - (2 - row) * 0.5) * 1.25, row * 0.47, z0 + 32.0), 90.0, "wood", 45.0)
 	for i in 9:
-		_prop("barrel", Vector3(6.0 + (i % 3) * 0.62, 0, z0 + 28.0 + (i / 3) * 0.62), randf() * 360.0, "metal", 60.0)
+		_prop("barrel", Vector3(7.0 + (i % 3) * 0.62, 0, z0 + 30.0 + (i / 3) * 0.62), randf() * 360.0, "metal", 60.0)
 
 	# Dağınık taşlar (dinamik)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 5
-	for i in 10:
-		var p := Vector3(rng.randf_range(-12, 12), 0, z0 + rng.randf_range(34, 70))
+	for i in 14:
+		var p := Vector3(rng.randf_range(-45, 45), 0, z0 + rng.randf_range(30, 80))
 		_stone(p, rng.randf_range(0.5, 1.3), rng)
 
 	# Gerçek binalar
-	_building("booth", Vector3(15.0, 0, z0 + 40.0), 90.0)
-	_building("oldbuilding", Vector3(0.0, 0, z0 + 48.0), 0.0)
-	_building("factory", Vector3(20.0, 0, z0 + 72.0), -90.0)
-	_building("tower", Vector3(-4.0, 0, z0 + 78.0), 0.0)
-	_building("soviet", Vector3(3.0, 0, z0 + 115.0), 90.0)
+	_building("oldbuilding", "brick", Vector3(0.0, 0, z0 + 52.0), 0.0)
+	_building("booth", "brick", Vector3(-20.0, 0, z0 + 64.0), 90.0)
+	_building("tower", "concrete", Vector3(-42.0, 0, z0 + 82.0), 0.0)
+	_building("factory", "brick", Vector3(42.0, 0, z0 + 78.0), -90.0)
+	_building("soviet", "concrete", Vector3(4.0, 0, z0 + 110.0), 90.0)
 
 
-func _building(model_name: String, pos: Vector3, rot_y: float) -> void:
+func _building(model_name: String, inner: String, pos: Vector3, rot_y: float) -> void:
 	var b := Building.new()
-	b.setup(model_name)
+	b.setup(model_name, inner)
 	b.position = pos
 	b.rotation_degrees.y = rot_y
 	add_child(b)
@@ -199,11 +234,7 @@ func _prop(model_name: String, pos: Vector3, rot_y: float, kind: String, body_ma
 	var pts := PackedVector3Array()
 	for p in Models.hull_points(model_name, visual):
 		pts.append(xf * p)
-	var shape := ConvexPolygonShape3D.new()
-	shape.points = pts
-	var cs := CollisionShape3D.new()
-	cs.shape = shape
-	d.add_child(cs)
+	d.add_hull(pts)
 	d.configure(kind, body_mass, 0.5 if kind == "metal" else 0.8)
 	d.position = pos + Vector3.UP * 0.01
 	d.rotation_degrees.y = rot_y
@@ -211,32 +242,40 @@ func _prop(model_name: String, pos: Vector3, rot_y: float, kind: String, body_ma
 	return d
 
 
+func _container(pos: Vector3, rot_y: float) -> void:
+	var d := Destructible.new()
+	var visual := Models.instance("container")
+	d.add_child(visual)
+	Models.fit(visual, 6.06, "length")
+	var b := Models.local_aabb(visual)
+	var size := b.size * visual.scale.x
+	# Konteyner uzun ekseni X olsun (atış yönüne dik duvar)
+	if size.z > size.x:
+		visual.rotation_degrees.y = 90.0
+		visual.position = Vector3(visual.position.z, visual.position.y, -visual.position.x)
+		size = Vector3(size.z, size.y, size.x)
+	d.add_box(size, Vector3(0, size.y * 0.5, 0))
+	d.configure("metal", 3800.0, 0.6)
+	d.position = pos + Vector3.UP * 0.01
+	d.rotation_degrees.y = rot_y
+	add_child(d)
+
+
 func _stone(pos: Vector3, size: float, rng: RandomNumberGenerator) -> void:
 	var d := Destructible.new()
-	var visual := Models.instance("rocks4")
-	# rocks4 dört ayrı kaya içerir; birini seç
-	var meshes := visual.find_children("*", "MeshInstance3D", true, false)
-	var keep: MeshInstance3D = meshes[rng.randi() % meshes.size()]
+	var mesh: Mesh = load("res://assets/rocks/pebble_%d.res" % rng.randi_range(0, 3))
 	var mi := MeshInstance3D.new()
-	mi.mesh = keep.mesh
-	visual.free()
+	mi.mesh = mesh
+	mi.scale = Vector3.ONE * size
 	d.add_child(mi)
-	var b := mi.mesh.get_aabb()
-	var s := size / maxf(b.size.x, maxf(b.size.y, b.size.z))
-	mi.scale = Vector3.ONE * s
-	mi.position = -b.get_center() * s
-	var hull := mi.mesh.create_convex_shape(true, true) as ConvexPolygonShape3D
+	var hull := mesh.create_convex_shape(true, true) as ConvexPolygonShape3D
 	var pts := PackedVector3Array()
 	for p in hull.points:
-		pts.append(mi.transform * p)
-	var shape := ConvexPolygonShape3D.new()
-	shape.points = pts
-	var cs := CollisionShape3D.new()
-	cs.shape = shape
-	d.add_child(cs)
-	var e := b.size * s
+		pts.append(p * size)
+	d.add_hull(pts)
+	var e := mesh.get_aabb().size * size
 	d.configure("stone", e.x * e.y * e.z * 0.5 * 2600.0)
-	d.position = pos + Vector3.UP * (b.size.y * s * 0.5 + 0.02)
+	d.position = pos + Vector3.UP * (e.y * 0.5 + 0.02)
 	d.rotation = Vector3(0, rng.randf() * TAU, 0)
 	add_child(d)
 
@@ -269,75 +308,87 @@ func _brick_wall(center: Vector3, length: float, rows: int, mat: Material) -> vo
 			x += w
 
 
-## Statik dekor: büyük kayalar (gölgesiz uzaklar, görünürlük mesafesi sınırlı).
+## Statik dekor: büyük, kapalı tabanlı kayalar (uzakta gölgesiz, görünürlük mesafesi sınırlı).
 func _scatter_decor() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 99
-	var models := ["rock_boulder2", "rock_medium", "rock_hero"]
-	for i in 16:
+	var meshes := ["granite", "basalt", "mossy", "sandstone", "river_1", "river_2"]
+	for i in 18:
 		var side := -1.0 if i % 2 == 0 else 1.0
 		var size := rng.randf_range(2.0, 7.0)
-		var pos := Vector3(side * rng.randf_range(22.0, 70.0), 0, rng.randf_range(-10.0, 330.0))
+		var pos := Vector3(side * rng.randf_range(60.0, 95.0), 0, rng.randf_range(-10.0, 330.0))
 		var body := StaticBody3D.new()
-		var visual := Models.instance(models[i % models.size()])
-		body.add_child(visual)
-		Models.fit(visual, size, "max")
-		visual.position.y -= size * 0.15  # biraz gömülü dursun
-		var shape := SphereShape3D.new()
-		shape.radius = size * 0.4
+		var mi := MeshInstance3D.new()
+		mi.mesh = load("res://assets/rocks/%s.res" % meshes[i % meshes.size()])
+		mi.scale = Vector3.ONE * size
+		mi.position.y = mi.mesh.get_aabb().size.y * size * 0.35
+		mi.visibility_range_end = 280.0
+		body.add_child(mi)
+		var sh := SphereShape3D.new()
+		sh.radius = size * 0.4
 		var cs := CollisionShape3D.new()
-		cs.shape = shape
-		cs.position.y = size * 0.25
+		cs.shape = sh
+		cs.position.y = size * 0.3
 		body.add_child(cs)
 		body.position = pos
 		body.rotation.y = rng.randf() * TAU
-		Models.visibility(visual, 260.0)
 		add_child(body)
 
 
-# --- Kaya ----------------------------------------------------------------
+# --- Fırlatıcı / mermi -------------------------------------------------------
 
-func _rock_radius() -> float:
-	return ROCK_SIZES[size_index]["r"]
+func _select_launcher(i: int) -> void:
+	if launcher and launcher.is_ready():
+		_discard(launcher.loaded)
+	launcher = launchers[i]
+	hud.set_launcher_name(launcher.title)
+	_reload()
 
 
-func _spawn_rock() -> void:
-	if current and not current.launched:
-		current.queue_free()
-		rocks.erase(current)
-	while rocks.size() >= MAX_ROCKS:
-		var old: Rock = rocks.pop_front()
+func _reload_if_waiting() -> void:
+	if launcher.is_ready():
+		_discard(launcher.loaded)
+	_reload()
+
+
+func _discard(p: Projectile) -> void:
+	projectiles.erase(p)
+	if is_instance_valid(p):
+		p.queue_free()
+	launcher.loaded = null
+
+
+func _reload() -> void:
+	projectiles = projectiles.filter(func(p: Projectile) -> bool: return is_instance_valid(p))
+	while projectiles.size() >= MAX_PROJECTILES:
+		var old: Projectile = projectiles.pop_front()
 		if is_instance_valid(old):
 			old.queue_free()
-	var r := _rock_radius()
-	var rock := Rock.new()
-	rock.setup(r)
-	add_child(rock)
-	aim_x = clampf(aim_x, -_aim_limit(), _aim_limit())
-	rock.global_position = Vector3(aim_x, RAMP_H + r * 1.05, RAMP_FLAT * 0.5)
-	rock.reset_physics_interpolation()
-	rocks.append(rock)
-	current = rock
-	camera.target = rock
-	hud.set_aiming(true)
+	var ammo: String = Projectile.ORDER[ammo_index]
+	var p := Projectile.new()
+	p.setup(ammo, launcher.base_radius * SIZES[size_index]["k"], launcher.rolling())
+	add_child(p)
+	launcher.load_projectile(p)
+	projectiles.append(p)
+	current = p
+	hud.set_ammo_name(p.display_name())
+	hud.set_size_name(SIZES[size_index]["name"])
+	hud.set_ready(true, launcher.hint())
+	camera.follow(launcher.view_target, launcher.view_distance, launcher.global_rotation.y)
+	camera.snap()
 
 
-func _aim_limit() -> float:
-	return RAMP_W * 0.5 - _rock_radius() - 0.2
+func _on_fire_pressed() -> void:
+	if launcher.is_ready():
+		launcher.fire()
+	else:
+		_reload()
 
 
-func _launch(power: float) -> void:
-	if current == null or current.launched:
-		return
-	current.launch(Vector3(0, 0, 1), power)
-	hud.set_aiming(false)
-
-
-func _cycle_size() -> void:
-	size_index = (size_index + 1) % ROCK_SIZES.size()
-	hud.set_size_name(ROCK_SIZES[size_index]["name"])
-	if current and not current.launched:
-		_spawn_rock()
+func _on_fired(p: Projectile) -> void:
+	current = p
+	hud.set_ready(false, "")
+	camera.follow(p, 14.0 + p.radius * 2.0)
 
 
 # --- Döngü / girdi -------------------------------------------------------
@@ -354,14 +405,16 @@ func _process(delta: float) -> void:
 	_stat_timer -= delta
 	if _stat_timer <= 0.0:
 		_stat_timer = 0.5
-		var spd := current.speed_kmh() if current else 0.0
+		var spd := current.speed_kmh() if is_instance_valid(current) else 0.0
 		hud.set_stats(spd, _count_displaced(), _destructibles.size())
 		var draws := int(RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME))
 		hud.set_fps(int(Engine.get_frames_per_second()), "%d çizim" % draws)
-	for rock in rocks.duplicate():
-		if is_instance_valid(rock) and rock.global_position.y < -50.0:
-			rocks.erase(rock)
-			rock.queue_free()
+	hud.set_info(launcher.info() if launcher.is_ready() else "")
+	projectiles = projectiles.filter(func(p: Projectile) -> bool: return is_instance_valid(p))
+	for p in projectiles.duplicate():
+		if p.global_position.y < -50.0:
+			projectiles.erase(p)
+			p.queue_free()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -373,25 +426,22 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif _touches.has(event.index):
 			var tch: Dictionary = _touches[event.index]
 			_touches.erase(event.index)
-			if _touches.is_empty() and current and not current.launched:
+			if _touches.is_empty() and launcher.is_ready():
 				var dy: float = tch["start"].y - event.position.y
 				var dt := maxf((Time.get_ticks_msec() - int(tch["t"])) / 1000.0, 0.05)
 				var vh: float = get_viewport().get_visible_rect().size.y
+				var swipe := 0.0
 				if dy > vh * 0.08 and dt < 0.6:
-					# Kaydırma hızına göre itiş gücü (m/s)
-					var swipe_speed: float = dy / vh / dt
-					_launch(clampf(4.0 + swipe_speed * 6.0, 4.0, 20.0))
+					swipe = dy / vh / dt
+				launcher.release(swipe)
 	elif event is InputEventScreenDrag:
 		if not _touches.has(event.index):
 			return
 		var prev: Vector2 = _touches[event.index]["pos"]
 		_touches[event.index]["pos"] = event.position
 		if _touches.size() == 1:
-			if current and not current.launched:
-				aim_x = clampf(aim_x - event.relative.x * 0.02, -_aim_limit(), _aim_limit())
-				var p := current.global_position
-				p.x = aim_x
-				current.global_position = p
+			if launcher.is_ready():
+				launcher.drag(event.relative, get_viewport().get_visible_rect().size)
 			else:
 				camera.orbit(event.relative.x, event.relative.y)
 		elif _touches.size() == 2:
@@ -405,45 +455,76 @@ func _unhandled_input(event: InputEvent) -> void:
 				camera.pinch(after / before)
 
 
-## Geliştirici testi: `godot -- --autotest` kayayı fırlatır, durumu ve performansı yazdırır.
+# --- Otomatik test -----------------------------------------------------------
+
+## `godot --headless --path . --fixed-fps 60 -- --autotest [--launcher=N] [--ammo=ad] [--size=N]`
 func _autotest() -> void:
 	var args := OS.get_cmdline_user_args()
-	print("Hedef parça sayısı: ", _destructibles.size())
-	await get_tree().create_timer(2.0).timeout
-	var early := _count_displaced()
-	print("Fırlatmadan önce yerinden oynayan: ", early)
+	for a in args:
+		if a.begins_with("--ammo="):
+			ammo_index = Projectile.ORDER.find(a.get_slice("=", 1))
+		elif a.begins_with("--size="):
+			size_index = int(a.get_slice("=", 1))
+	var li := 0
+	for a in args:
+		if a.begins_with("--launcher="):
+			li = int(a.get_slice("=", 1))
+	_select_launcher(li)
+	print("Hedef parça: %d   fırlatıcı: %s   mermi: %s (%.1f t, r=%.2f m)" % [
+		_destructibles.size(), launcher.title, current.display_name(), current.mass / 1000.0, current.radius])
+	for f in 90:
+		await get_tree().physics_frame
+	print("Fırlatmadan önce yerinden oynayan: ", _count_displaced())
 	if "--shots" in args:
 		await _shots()
 		get_tree().quit()
 		return
-	_launch(10.0)
-	# Simülasyon saniyesi = 60 fizik karesi (gerçek zamandan bağımsız). `--fixed-fps 60`
-	# ile çalıştırıldığında toplam süre, 30 sn simülasyonun gerçek işlem maliyetidir.
+	if launcher is Slingshot:
+		(launcher as Slingshot).pull = Vector3(0, -2.5, -8.5)
+		launcher.load_projectile(current)
+	launcher.fire()
+	if "--trace" in args:
+		for f in 150:
+			await get_tree().physics_frame
+			if f % 6 == 0:
+				var extra := ""
+				if launcher is Trebuchet:
+					var t := launcher as Trebuchet
+					extra = "kol açı=%.0f° kol ω=%.1f" % [rad_to_deg(t.arm.rotation.x), t.arm.angular_velocity.length()]
+				print("  %.2fs  mermi=%s v=%s  %s" % [f / 60.0, current.global_position.snapped(Vector3.ONE * 0.1), current.linear_velocity.snapped(Vector3.ONE * 0.1), extra])
 	var t0 := Time.get_ticks_usec()
 	var sec_t := t0
-	for i in 30:
+	var max_speed := 0.0
+	for i in 20:
 		for f in Engine.physics_ticks_per_second:
 			await get_tree().physics_frame
+			if is_instance_valid(current):
+				max_speed = maxf(max_speed, current.speed_kmh())
 		var now := Time.get_ticks_usec()
-		var awake := 0
-		for d in _destructibles:
-			if not (d as RigidBody3D).sleeping:
-				awake += 1
 		var broken := _buildings.filter(func(b: Building) -> bool: return b.broken).size()
-		print("t=%2d  kaya=%s  hız=%3.0f km/sa  yıkılan=%3d  uyanık=%3d  kırık bina=%d  işlem=%4.0f ms/sn" % [
-			i + 1, current.global_position.round(), current.speed_kmh(), _count_displaced(), awake, broken, (now - sec_t) / 1000.0])
+		var released := 0
+		for b in _buildings:
+			for c in b.chunks:
+				if not c.intact:
+					released += 1
+		var pos := current.global_position.round() if is_instance_valid(current) else Vector3.ZERO
+		var spd := current.speed_kmh() if is_instance_valid(current) else 0.0
+		print("t=%2d  mermi=%s  hız=%3.0f km/sa  yıkılan=%3d  kopan parça=%3d  hasarlı bina=%d  işlem=%4.0f ms/sn" % [
+			i + 1, pos, spd, _count_displaced(), released, broken, (now - sec_t) / 1000.0])
 		sec_t = now
-	print("TOPLAM işlem süresi (30 sn simülasyon): %.2f sn" % ((Time.get_ticks_usec() - t0) / 1e6))
+	print("Azami hız: %.0f km/sa" % max_speed)
+	print("TOPLAM işlem süresi (20 sn simülasyon): %.2f sn" % ((Time.get_ticks_usec() - t0) / 1e6))
 	get_tree().quit()
 
 
 func _shots() -> void:
 	var z0 := RAMP_FLAT + RAMP_SLOPE + RAMP_RUNOUT
 	var views := [
-		[current.global_position + Vector3(0, 8, -18), current.global_position + Vector3(0, 0, 20)],
-		[Vector3(26, 12, z0 - 12), Vector3(0, 6, z0 + 50)],
-		[Vector3(-45, 35, 70), Vector3(0, 15, 140)],
-		[Vector3(-30, 8, z0 + 30), Vector3(0, 10, z0 + 90)],
+		[Vector3(-30, 9, 112), Vector3(-42, 5, 125)],
+		[Vector3(30, 7, 128), Vector3(42, 4, 142)],
+		[Vector3(-10, 4, 152), Vector3(-22, 2, 162)],
+		[Vector3(0, 30, 120), Vector3(0, 5, z0 + 60)],
+		[Vector3(-25, 6, z0 + 28), Vector3(0, 4, z0 + 52)],
 	]
 	camera.target = null
 	for k in views.size():
@@ -452,16 +533,14 @@ func _shots() -> void:
 		await get_tree().process_frame
 		await get_tree().process_frame
 		get_viewport().get_texture().get_image().save_png("user://shot_view%d.png" % k)
-	# Yıkım görüntüsü: kulenin alt katlarına darbe ver, birkaç saniye simüle et
-	var tower: Building = _buildings.filter(func(b: Building) -> bool: return b.name == "tower")[0]
-	for c in tower.chunks:
-		if c.global_position.y < 6.0:
-			c.sleeping = false
-			c.apply_central_impulse(Vector3(1, 0.2, 0.3) * c.mass * 9.0)
-	for f in 25:
+	# Yıkım: eski binaya patlayıcı etkisi + kuleye ağır darbe
+	Building.strike(get_world_3d(), Vector3(0, 3, z0 + 50), 3.0e6, Vector3(0, 0.2, 1))
+	Building.strike(get_world_3d(), Vector3(-42, 4, z0 + 76), 6.0e6, Vector3(0, 0.1, 1))
+	for f in 40:
 		await get_tree().physics_frame
-	camera.global_position = Vector3(-30, 9, z0 + 62)
-	camera.look_at(Vector3(-4, 6, z0 + 80))
-	await get_tree().process_frame
-	await get_tree().process_frame
-	get_viewport().get_texture().get_image().save_png("user://shot_view%d.png" % views.size())
+	for k in 2:
+		camera.global_position = [Vector3(-14, 6, z0 + 34), Vector3(-26, 10, z0 + 62)][k]
+		camera.look_at([Vector3(0, 4, z0 + 52), Vector3(-42, 8, z0 + 82)][k])
+		await get_tree().process_frame
+		await get_tree().process_frame
+		get_viewport().get_texture().get_image().save_png("user://shot_break%d.png" % k)

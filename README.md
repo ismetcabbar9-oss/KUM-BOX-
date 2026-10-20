@@ -1,4 +1,4 @@
-# Kaya Yuvarla — prototip v0.2
+# Kaya Yuvarla — prototip v0.3
 
 Gerçekçi fizikli, dokunmatik kontrollü 3D mobil sandbox. Uzun beton rampadan kaya yuvarla; bariyerleri, duvarı ve **gerçek bina modellerini** yık.
 
@@ -14,20 +14,31 @@ Gerçekçi fizikli, dokunmatik kontrollü 3D mobil sandbox. Uzun beton rampadan 
 
 ## Kontroller (sadece dokunmatik)
 
-| Hareket | Ne yapar |
-|---|---|
-| Sağa-sola sürükle (fırlatmadan önce) | Kayayı hizala |
-| Yukarı hızlı kaydır | İt (kaydırma hızı = güç) |
-| **İT** | Sabit güçle it |
-| Tek parmak (fırlattıktan sonra) | Kamerayı döndür |
-| İki parmak kıstır | Yakınlaştır / uzaklaştır |
-| **YENİ KAYA / BOYUT / AĞIR ÇEKİM / SIFIRLA** | — |
-| **GRAFİK** | Düşük / Orta / Yüksek (mobilde varsayılan Orta) |
-| **LİSANSLAR** | Model/ses atıfları |
+Sağdaki butonlar: **FIRLAT/YÜKLE**, **fırlatıcı** (dokundukça değişir), **mermi** (dokundukça değişir), **BOYUT**, **AĞIR ÇEKİM**, **SIFIRLA**. Fırlattıktan sonra tek parmak kamerayı döndürür, iki parmak yakınlaştırır.
 
-Sol üstte FPS ve draw call sayısı görünür (telefonda test için).
+| Fırlatıcı | Kontrol | Fizik |
+|---|---|---|
+| **RAMPA** | yana sürükle: hizala, yukarı kaydır: it | 55 m beton rampa, yerçekimiyle yuvarlanma |
+| **MANCINIK** | yana: yön, yukarı/aşağı: karşı ağırlık (30–180 t) | menteşeli kol + serbest sallanan karşı ağırlık + kaşık; bırakma pimi 48°'de çözülür |
+| **DEV SAPAN** | aşağı sürükle: ger, yana: nişan, FIRLAT: bırak | iki lastik Hooke yasasıyla (F = k·x) çeker; ağır mermi daha yavaş çıkar |
+| **HAVA TOPU** | yana: yön, yukarı/aşağı: namlu açısı | sabit basınç enerjisi (½mv² = E) |
 
-## v0.2'de değişenler
+Sapan ve topta sarı noktalar tahmini yörüngeyi gösterir.
+
+**Mermiler:** Granit, Bazalt, Yosunlu kaya, Kumtaşı, Dere taşı (gerçek kaya taramaları, farklı yoğunluklar), **Dönen testere** (yüksek devirle döner, yere değince ileri atılır, binaları keserek az enerji kaybeder), **Çelik gülle** (7.85 t/m³), **Patlayıcı varil** (çarpınca patlar: yapıya hasar + çevreye itki).
+
+**Engeller:** dönen çelik pervane (kinematik), sallanan yıkım gülle sarkacı (gerçek menteşe), konteyner yığınları, beton bariyerler, tuğla duvar, variller, sandıklar, taşlar.
+
+## v0.3'te değişenler
+
+- **Yeni yıkım sistemi (kâğıt gibi dağılma yok):** bina parçaları artık dolu. Her cephe parçası içe doğru 35–50 cm kalınlaştırıldı, iç yüzleri ve kırık kenarları beton/tuğla malzemesiyle kaplı. Kesimler her katta kaydırılmış ve eğik; ızgara gibi değil, kırılmış gibi duruyor.
+- **Yapısal bütünlük:** bina ayaktayken tüm parçalar statik (fizik maliyeti sıfır). Darbe enerjisi çarpma noktası çevresine dağılır; yalnız dayanımı aşılan parçalar kopar. Kırmaya giden enerji mermiden düşülür: sağlam bina ağır kayayı durdurur. Desteği kopan üst kısımlar kendi ağırlığıyla çöker; düşen ağır parçalar alttaki katları ezer.
+- **Kaya tabanları kapatıldı:** taramalardaki açık tabanlar sınır kenarlarından bulunup dolduruldu (`tools/prepare_rocks.gd`); saydam gelen malzeme opak yapıldı. Kayalara LOD üretildi.
+- Görsel moloz parçacıkları (zemine çarpan küçük taşlar), patlama efekti (ışık, ateş, duman).
+- Yeni gerçek sesler (Freesound CC0): patlama, top, daire testere döngüsü, mancınık, sapan lastiği.
+- Hata düzeltmesi: döngü sesleri (yuvarlanma, rüzgâr) döngüye ayarlı değildi, birkaç saniye sonra susuyordu.
+
+## v0.2'de değişenler (önceki sürüm)
 
 - **Gerçek binalar** (Sketchfab, CC-BY): Sovyet panel apartman, Asya tipi kule blok, eski köşe bina, terk edilmiş tuğla fabrika, trafo binası.
   `tools/fracture_buildings.gd` her modeli önceden 4 m civarı hücrelere keser (toplam ~250 parça). Bina sağlamken **tek mesh** çizilir; ilk darbede parçalara geçer. Parçalar modelin kendi dokusunu taşır.
@@ -69,7 +80,9 @@ Varlıkları yeniden üretmek:
 SKETCHFAB_API_TOKEN=... python3 tools/prepare_models.py
 godot --headless --path . --import
 godot --headless --path . -s res://tools/fracture_buildings.gd
+godot --headless --path . -s res://tools/prepare_rocks.gd
 python3 tools/process_sounds.py
+python3 tools/fetch_textures.py
 ```
 
 ## Lisanslar
@@ -81,15 +94,15 @@ python3 tools/process_sounds.py
 ## Geliştirici testi
 
 ```
-godot --headless --path . --fixed-fps 60 -- --autotest
+godot --headless --path . --fixed-fps 60 -- --autotest --launcher=1 --ammo=saw
 ```
-Kayayı fırlatır; her simülasyon saniyesinde konum, hız, yıkılan/uyanık parça, kırık bina ve işlem süresini yazar.
+`--launcher`: 0 rampa, 1 mancınık, 2 sapan, 3 top. `--ammo`: granite, basalt, mossy, sandstone, river, saw, steel, bomb. `--trace` ilk 2,5 sn'yi adım adım yazar.
 `-- --autotest --shots` ekran görüntüsü alır (görüntülü ortam gerekir).
 
 ## Yol haritası
 
 1. ~~v0.1: temel oynanış~~
-2. **v0.2 (bu sürüm):** gerçek modeller, gerçek sesler, parçalanan binalar, performans.
-3. **v0.3:** gerçek telefonda profil (FPS hedefi 60), birden çok harita, görev modu (yıkım %, süre, yıldız).
-4. **v0.4:** yeni eylemler — mancınık, çoklu kaya, araçlar, tekrar oynatma kamerası.
+2. ~~v0.2: gerçek modeller, gerçek sesler, performans~~
+3. **v0.3 (bu sürüm):** fırlatıcılar, mermi türleri, engeller, dolu parçalı yapısal yıkım.
+4. **Sıradaki:** telefonda his/FPS ayarı, tekrar oynatma kamerası, daha fazla fırlatıcı/mermi; temel oynanış oturunca haritalar ve görevler.
 5. **Yayın:** menü, ayarlar, Play Store sürümü.

@@ -35,6 +35,10 @@ IDS = {
     "drum_soft": 524817, "metal_hard": 488589, "metal_impact": 530486,
     "glass_a": 221528, "glass_b": 141563, "glass_c": 536763,
     "wind_light": 352436,
+    "explosion_a": 235968, "explosion_b": 255111,
+    "saw_free": 448133, "saw_cut": 267636,
+    "catapult_launch": 479922,
+    "sling_1": 513934, "sling_2": 513933, "sling_3": 853649,
 }
 
 
@@ -43,15 +47,21 @@ def fetch(sid):
     path = os.path.join(CACHE, f"{sid}.ogg")
     meta_path = os.path.join(CACHE, f"{sid}.json")
     if not os.path.exists(path):
-        r = urllib.request.urlopen(urllib.request.Request(f"https://freesound.org/s/{sid}/", headers=UA))
-        page = r.read().decode()
-        user = re.search(r"/people/([^/]+)/sounds/", r.geturl()).group(1)
+        # Freesound, Python'un HTTP istemcisini sık reddediyor; curl kullan
+        out = subprocess.run(["curl", "-sSL", "-A", UA["User-Agent"], "-w", "\n%{url_effective}",
+                              f"https://freesound.org/s/{sid}/"], capture_output=True, check=True).stdout.decode()
+        page, final_url = out.rsplit("\n", 1)
+        user = re.search(r"/people/([^/]+)/sounds/", final_url).group(1)
         title = html.unescape(re.search(r'<meta property="og:title" content="([^"]+)"', page).group(1))
         assert "Creative Commons 0" in page, f"{sid} CC0 değil"
         prev = re.search(r"(https://cdn.freesound.org/previews/\d+/%d_\d+)-(?:hq|lq)\.(?:ogg|mp3)" % sid, page).group(1)
-        data = urllib.request.urlopen(urllib.request.Request(prev + "-hq.ogg", headers=UA)).read()
-        open(path, "wb").write(data)
-        json.dump({"id": sid, "user": user, "title": title, "url": r.geturl()}, open(meta_path, "w"))
+        # Bazı yeni kayıtlarda yalnız MP3 önizleme var (ffmpeg ikisini de çözer)
+        for ext in ("-hq.ogg", "-hq.mp3", "-lq.ogg"):
+            if subprocess.run(["curl", "-sSfL", "-A", UA["User-Agent"], "-o", path, prev + ext]).returncode == 0:
+                break
+        else:
+            raise RuntimeError(f"{sid} önizleme indirilemedi")
+        json.dump({"id": sid, "user": user, "title": title, "url": final_url}, open(meta_path, "w"))
     x = subprocess.run(["ffmpeg", "-v", "quiet", "-i", path, "-ac", "1", "-ar", str(SR), "-f", "f32le", "-"],
                        capture_output=True, check=True).stdout
     return np.frombuffer(x, dtype=np.float32).astype(np.float64), json.load(open(meta_path))
@@ -197,6 +207,32 @@ def main():
     grit = lowpass(np.tile(S["tumbling_rocks"], 2)[:len(rumble)], 2500)
     roll = mix((rumble, 1.0), (ball, 0.45), (grit, 0.25))
     write("roll_loop", loop(roll, 0.8), 0.85)
+
+    # Patlama (iki kayıt) ve top atışı (patlamanın kısa, tiz başı + gürleme)
+    exa, exb = trim_silence(S["explosion_a"]), trim_silence(S["explosion_b"])
+    write("explosion_0", fade(exa[:int(5.5 * SR)], 0.001, 1.5))
+    write("explosion_1", fade(exb[:int(5.5 * SR)], 0.001, 1.5))
+    write("explosion_2", fade(mix((exa[:int(4 * SR)], 0.7), (resample(exb[:int(3 * SR)], 0.8), 0.6)), 0.001, 1.2))
+    write("cannon_0", fade(mix((exa[:int(1.6 * SR)], 1.0), (resample(exa[:int(1.2 * SR)], 1.4), 0.5)), 0.001, 0.8))
+    write("cannon_1", fade(mix((exb[:int(1.6 * SR)], 1.0), (lowpass(exa[:int(1.6 * SR)], 400), 0.6)), 0.001, 0.8))
+
+    # Dönen testere döngüsü: boşta dönen gerçek daire testere sesinin kararlı kısmı
+    saw = S["saw_free"]
+    env = np.sqrt(np.convolve(saw ** 2, np.ones(4410) / 4410, mode="same"))
+    start = int(np.argmax(env > env.max() * 0.6)) + int(0.5 * SR)
+    write("saw_loop", loop(saw[start:start + int(4 * SR)], 0.4), 0.8)
+
+    # Mancınık: ahşap gerilme/kalkış kayıtları
+    cat = S["catapult_launch"]
+    for i, seg in enumerate(slices(cat, 2, 2.5, 3.0, 0.4)):
+        write(f"catapult_{i}", seg, 0.85)
+    for i, seg in enumerate(slices(cat, 2, 1.5, 1.0, 0.15)[:2]):
+        write(f"creak_{i}", lowpass(seg, 3000), 0.6)
+
+    # Sapan: lastik bırakma (+ pes katman: dev lastik)
+    for i, k in enumerate(["sling_1", "sling_2", "sling_3"]):
+        snap = fade(trim_silence(S[k]), 0.001, 0.3)
+        write(f"sling_{i}", mix((snap, 1.0), (resample(snap, 0.6), 0.5)), 0.85)
 
     # Rüzgâr ambiyansı (30 sn, dikişsiz)
     wind = S["wind_light"][int(5 * SR):int(37 * SR)]

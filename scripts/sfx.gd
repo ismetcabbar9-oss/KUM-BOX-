@@ -22,6 +22,11 @@ func _ready() -> void:
 		"debris": _load_set("debris_", 6),
 		"crash": _load_set("crash_big_", 3),
 		"glass": _load_set("glass_", 3),
+		"explosion": _load_set("explosion_", 3),
+		"catapult": _load_set("catapult_", 2),
+		"sling": _load_set("sling_", 3),
+		"cannon": _load_set("cannon_", 2),
+		"creak": _load_set("creak_", 2),
 	}
 	# Tuğla ve taş da beton kayıtlarını kullanır (perde farkıyla)
 	_streams["brick"] = _streams["concrete"]
@@ -75,8 +80,27 @@ func _setup_buses() -> void:
 func _load_set(prefix: String, count: int) -> Array:
 	var arr := []
 	for i in count:
-		arr.append(load(S + prefix + str(i) + ".ogg"))
+		var path := S + prefix + str(i) + ".ogg"
+		if ResourceLoader.exists(path):
+			arr.append(load(path))
 	return arr
+
+
+## Tek dosyalık ses (döngüler): yoksa null.
+func stream(name: String) -> AudioStream:
+	var path := S + name + ".ogg"
+	return load(path) if ResourceLoader.exists(path) else null
+
+
+## Adlandırılmış ses setinden çal (fırlatıcı sesleri vb.).
+func play(set_name: String, pos: Vector3, volume_db := 0.0, pitch := 1.0) -> void:
+	_play(set_name, pos, volume_db, pitch * randf_range(0.95, 1.05))
+
+
+func explosion(pos: Vector3) -> void:
+	_played_this_frame = 0
+	_play("explosion", pos, 8.0, randf_range(0.9, 1.05))
+	_play("crash", pos, 2.0, randf_range(0.8, 0.95))
 
 
 func _physics_process(_delta: float) -> void:
@@ -89,7 +113,9 @@ func _play(kind: String, pos: Vector3, volume_db: float, pitch: float) -> void:
 	_played_this_frame += 1
 	var p := _pool[_next]
 	_next = (_next + 1) % POOL_SIZE
-	var set_: Array = _streams[kind]
+	var set_: Array = _streams.get(kind, [])
+	if set_.is_empty():
+		return
 	p.stream = set_[randi() % set_.size()]
 	p.global_position = pos
 	p.volume_db = volume_db

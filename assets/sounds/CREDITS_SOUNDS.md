@@ -32,3 +32,11 @@ Tüm kayıtlar Freesound.org, **Creative Commons 0**. İşlenmiş hâlleri (kesm
 - [Glass Break](https://freesound.org/people/avrahamy/sounds/141563/) — avrahamy
 - [Glass.ogg](https://freesound.org/people/egomassive/sounds/536763/) — egomassive
 - [Forest, Winter, Light Wind](https://freesound.org/people/Kinoton/sounds/352436/) — Kinoton
+- [Explosion_01.wav by tommccann](https://freesound.org/people/tommccann/sounds/235968/) — tommccann
+- [Cinematic_Boom_Rhapsodize.wav by rhapsodize](https://freesound.org/people/rhapsodize/sounds/255111/) — rhapsodize
+- [Circular Saw by derjuli](https://freesound.org/people/derjuli/sounds/448133/) — derjuli
+- [Saw Cutting by BrainClaim](https://freesound.org/people/BrainClaim/sounds/267636/) — BrainClaim
+- [R01-04-Catapult Launch.wav by craigsmith](https://freesound.org/people/craigsmith/sounds/479922/) — craigsmith
+- [Slingshot 1.wav by olver](https://freesound.org/people/olver/sounds/513934/) — olver
+- [Slingshot 2.wav by olver](https://freesound.org/people/olver/sounds/513933/) — olver
+- [Slingshot sound by K27K_Mike](https://freesound.org/people/K27K_Mike/sounds/853649/) — K27K_Mike
