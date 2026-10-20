@@ -29,6 +29,10 @@ var split_energy_density := 0.0  # J/m³
 var _splitting := false
 var split_halves := []
 var split_gen := 0
+## Örgü yapı bloğu: sert darbede / hızla koptuğunda BrickPool tuğlalara ayırır
+var shatter_pool: Node = null
+## Son kopmada darbe noktası (dünya): tuğlalar bu noktaya yakınsa daha hızlı fırlar
+var hit_point := Vector3.INF
 ## Bölünme bütçesi (performans): kare başına en fazla 2 bölünme, toplamda max_spawned yeni parça
 const MAX_SPLITS_PER_FRAME := 2
 static var max_spawned := 160  # grafik kalitesine göre ayarlanır
@@ -47,7 +51,7 @@ func configure(kind: String, body_mass: float, friction := 0.8) -> void:
 	physics_material_override = pm
 	# Katman 1: statik dünya, 2: parçalar, 3: mermiler, 4: engeller
 	collision_layer = 2
-	collision_mask = 1 | 2 | 4 | 8
+	collision_mask = 1 | 2 | 4 | 8 | 16
 	can_sleep = true
 	add_to_group("destructible")
 	sleeping_state_changed.connect(_on_sleeping_changed)
@@ -123,6 +127,8 @@ func release(impulse := Vector3.ZERO, at := Vector3.ZERO) -> void:
 	# Statikten dinamiğe geçiş fizik sunucusunda bir sonraki adımda olur: itkiyi o zaman uygula
 	_pending_impulse = impulse
 	_pending_offset = at - global_position
+	if impulse.length_squared() > 0.0:
+		hit_point = at
 	released.emit(self)
 
 
@@ -141,6 +147,9 @@ func _physics_process(delta: float) -> void:
 		linear_velocity += _pending_impulse / mass
 		angular_velocity += (_pending_offset.cross(_pending_impulse) / mass) * 0.15
 		_pending_impulse = Vector3.ZERO
+		# Darbeyle kopan örgü bloğu dağılır (desteği giden blok ise önce düşer, yere çarpınca)
+		if shatter_pool and linear_velocity.length() > 1.2:
+			shatter_pool.request(self)
 		return
 	var v := linear_velocity
 	var slow := v.length_squared() < 1.0 and angular_velocity.length_squared() < 1.0
@@ -189,6 +198,9 @@ func make_splittable_halves(halves: Array, energy_density: float) -> void:
 
 
 func _try_split(energy: float) -> void:
+	if shatter_pool:
+		shatter_pool.request(self)
+		return
 	if _splitting or intact or split_gen >= MAX_GEN or spawned >= max_spawned:
 		return
 	var f := Engine.get_physics_frames()

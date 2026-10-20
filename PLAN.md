@@ -33,6 +33,12 @@ otomatik test + ekran görüntüsü + commit + ZIP.
 - [x] Yeni hedef şeridi: elektrik hattı (kablolar direk kırılınca kopar) + beton köprü.
 - [ ] Buldozer ve çift şeritli rampa → Aşama 5'e (haritalarla birlikte).
 
+## Ara sürüm v0.7 (istek üzerine)  ✅
+- [x] İki taş devri adamı: tüm fırlatıcılarda ekip; rampada kayayı iterek fırlatır.
+- [x] Kale yeniden: 4 kule (ön 2 kısa, arka 2 yüksek), ~4 kat büyük, tuğla tuğla yıkım, 15–20 iyi atışta yıkılır.
+- [x] 29 asker (kuleler, surlar, avlu).
+- [x] Kale haritasında güçlendirilmiş mancınık rampanın tepesinde.
+
 ## Aşama 5 — Görevler ve haritalar
 - Görev türleri: X atışta Y% yıkım, belirli hedefi düşür, zincirleme çöküş, süre.
 - Yıldız puanı, ilerleme kaydı.

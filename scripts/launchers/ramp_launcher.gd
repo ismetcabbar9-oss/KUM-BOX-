@@ -18,6 +18,10 @@ var aim := 0.0
 var _body: StaticBody3D
 var _pts := PackedVector3Array()
 var _start_i := 0
+## Ekip iterken (fırlatmadan önceki kısa zorlanma): kalan süre
+var _push_t := -1.0
+var _push_power := 9.0
+var _push_from := Vector3.ZERO
 
 
 func _init() -> void:
@@ -194,6 +198,36 @@ func drag(relative: Vector2, _vs: Vector2) -> void:
 	_place()
 
 
+## Ekip kayanın arkasında, elleri kayada
+func crew_spots() -> Array:
+	if loaded == null:
+		return super()
+	var f := _frame_at(_start_i)
+	var t: Vector3 = global_transform.basis * f[0]
+	var s: Vector3 = global_transform.basis * f[1]
+	var r := loaded.radius
+	var p := loaded.global_position
+	var hand_h := 1.35
+	var behind := sqrt(maxf(r * r - (r - hand_h) * (r - hand_h), 0.04)) if r > hand_h else r
+	var ground := p - Vector3.UP * r * 1.05
+	var face := Basis.looking_at(-t, Vector3.UP)
+	var back := behind + 0.75
+	var side := minf(0.6, r * 0.8) + 0.25
+	return [Transform3D(face, ground - t * back + s * side), Transform3D(face, ground - t * back - s * side)]
+
+
+func crew_mode() -> String:
+	return "strain" if _push_t >= 0.0 or is_ready() else "idle"
+
+
+func crew_step_rate() -> float:
+	return 9.0 if _push_t >= 0.0 else 0.0
+
+
+func is_ready() -> bool:
+	return super() and _push_t < 0.0
+
+
 func release(swipe_up_speed: float) -> bool:
 	if swipe_up_speed > 0.0 and is_ready():
 		fire(clampf(4.0 + swipe_up_speed * 6.0, 4.0, 20.0))
@@ -206,12 +240,28 @@ func fire(power := -1.0) -> void:
 		return
 	if power < 0.0:
 		power = 9.0
-	var p := loaded
+	# Önce ekip ~0.8 sn iter: kaya yavaşça kıpırdar, sonra bırakılır
+	_push_power = power
+	_push_t = 0.8
+	_push_from = loaded.global_position
+
+
+func _physics_process(delta: float) -> void:
+	if _push_t < 0.0 or not is_instance_valid(loaded):
+		_push_t = -1.0
+		return
+	_push_t -= delta
 	var f := _frame_at(_start_i)
-	var t: Vector3 = f[0]
+	var t: Vector3 = global_transform.basis * f[0]
+	var k := 1.0 - maxf(_push_t, 0.0) / 0.8
+	loaded.global_position = _push_from + t * 0.9 * k * k
+	if _push_t > 0.0:
+		return
+	_push_t = -1.0
+	var p := loaded
 	var s: Vector3 = f[1]
 	# Yuvarlanma: ω = v × (yukarı) / r  ->  ekseni yan vektör
-	p.launch(t * power, s * power / p.radius)
+	p.launch(f[0] * _push_power, s * _push_power / p.radius)
 	fired.emit(p)
 
 

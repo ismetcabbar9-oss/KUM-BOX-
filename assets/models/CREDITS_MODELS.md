@@ -26,3 +26,6 @@ Dokular mobil için küçültüldü; bina modelleri oyunda yıkılabilir parçal
 - `log_pile`: "Log Pile (Game Ready / 2K PBR)" — Meerschaum Digital — CC Attribution — https://sketchfab.com/3d-models/log-pile-game-ready-2k-pbr-3f4205a30a7d4adda50c775fb8cce06c
 - `barrel`: "Barrel_01" — Poly Haven — CC0 — https://polyhaven.com/a/Barrel_01
 - `crate`: "wooden_crate_02" — Poly Haven — CC0 — https://polyhaven.com/a/wooden_crate_02
+- `caveman_a`: "Caveman Outfit 2" — SidewalkNZ — CC Attribution — https://sketchfab.com/3d-models/caveman-outfit-2-3ba4da569fae4f2eb1a84988c90cc5ed
+- `caveman_b`: "Caveman Outfit 3" — SidewalkNZ — CC Attribution — https://sketchfab.com/3d-models/caveman-outfit-3-83d99a21ce154571bdf6d4ecef2fe183
+- `soldier`: "Parameswara Chronicles: Portugese Soldier Idle" — Dr Helmi Norman — CC Attribution — https://sketchfab.com/3d-models/parameswara-chronicles-portugese-soldier-idle-271c26d2137a46f6911b09566b552d14

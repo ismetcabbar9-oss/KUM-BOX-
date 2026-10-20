@@ -1,4 +1,4 @@
-# Kaya Yuvarla — prototip v0.6
+# Kaya Yuvarla — prototip v0.7
 
 Geliştirme planı: [PLAN.md](PLAN.md) (kademeli aşamalar).
 
@@ -34,6 +34,22 @@ Sapan ve topta sarı noktalar tahmini yörüngeyi gösterir.
 **Yeni mermiler (v0.6):** **Zincirli gülle** (havada ikiye ayrılır, aradaki esnemez zincirle dönerek uçar), **Üçlü testere** (havada ±8° açıyla üç diske ayrılır), **Yapışkan bomba** (değdiği yere yapışır, hızlanan bip sesleriyle 1,8 sn sonra patlar; hareketli gövdeye iğnelenir).
 
 **Engeller:** dönen çelik pervane (kinematik), sallanan yıkım gülle sarkacı (gerçek menteşe), konteyner yığınları, beton bariyerler, tuğla duvar, variller, sandıklar, taşlar.
+
+## v0.7'de değişenler
+
+- **Taş devri ekibi:** iki kaslı, post giyimli taş devri adamı (rigli model, prosedürel poz) her fırlatıcının başında durur. Rampada kayanın arkasına eğilip avuçlarını dayar; FIRLAT'a basınca ~0,8 sn iterek adım atarlar, kaya sonra bırakılır. Her atıştan sonra kollarını kaldırıp sevinirler.
+- **Yeni kale** (KALE haritası): 4 kule. Öndeki ikisi 27 m, arkadaki ikisi 45 m. Aralarında 18 m surlar, ön surda kapı, kule tepelerinde taş döşeme ve mazgallar. Eski kalenin ~4 katı hacim (~1400 blok).
+- **Tuğla tuğla yıkım:** kale bloğu koptuğunda ya da sert düştüğünde duvarda görünen tuğla ızgarasına (1,5 × 1 × 1 m) ayrılır. Duvar yüzündeki harç çizgileri gölgelendiriciyle çizilir ve kopan tuğlalarla birebir aynıdır. Tuğlalar tek MultiMesh ile çizilir. Duran tuğla dondurulur. Tavan dolunca en eski tuğlalar fizikten çıkıp sabit moloz olarak kalır. Hareketli tuğla tavanı grafik kalitesine bağlı (450/280/150).
+- **Kule çöküşü:** kulenin alt 3 sırasının ~%30'u kopunca kule ağırlığını taşıyamaz ve toptan devrilir.
+- **Denge:** 7 MJ'lük (mancınık atışı) darbelerle test: 12. darbede dört kule de yıkık, 20 darbede kalenin ~%73'ü yıkık.
+- **29 asker:** kule tepelerinde, sur yürüyüş yolunda ve avluda nöbet animasyonuyla durur. Üstüne mermi ya da tuğla çarparsa, patlamada ya da altındaki taş koparsa düşüp ölür.
+- **Mancınık rampanın tepesinde** (kale haritası): rampa başlangıcının arkasındaki beton platformda. Daha uzun kol (23 m), 30–1200 t karşı ağırlık, 5,6 t'luk taş, daha yatık bırakma açısı. Kale haritası mancınıkla başlar.
+  - Varsayılan 295 t ile ön sura doğrudan çarpar: ~200 km/sa, ~9 MJ, darbe başına 9–13 blok.
+  - Karşı ağırlık artınca arka kulelere ulaşır.
+- **Mancınık hata düzeltmeleri:**
+  - Yana çevrilince kolun menteşesi eski yönde kalıyor ve güç kaybediyordu.
+  - Yüklemeden hemen sonra atınca kol, ışınlanmadan kalan sahte hızla savruluyordu.
+  - İkisi de düzeldi; atışlar artık tutarlı.
 
 ## v0.6'da değişenler (Aşama 4)
 
@@ -101,6 +117,10 @@ scripts/world_builder.gd   ayaklı rampa, zemin, PBR malzemeler
 scripts/game_camera.gd     takip kamerası
 scripts/hud.gd             dokunmatik arayüz, lisans paneli
 scripts/sfx.gd, fx.gd      ses havuzu/bus'lar, toz + sarsıntı (autoload)
+scripts/fortress.gd        dev kale (kuleler, surlar, asker yerleri, kule çöküşü)
+scripts/brick_pool.gd      kale bloklarını tuğlalara ayırma + MultiMesh çizim
+shaders/masonry.gdshader   kesme taş örgü (harç ızgarası)
+scripts/characters/        taş devri ekibi, asker, prosedürel poz (RigPose)
 assets/models/             işlenmiş modeller (dokular ≤2K)
 assets/buildings/*.scn     kesilmiş binalar (fracture aracının çıktısı)
 assets/sounds/             işlenmiş ses kayıtları (OGG)
@@ -130,7 +150,7 @@ python3 tools/fetch_textures.py
 ```
 godot --headless --path . --fixed-fps 60 -- --autotest --launcher=1 --ammo=saw
 ```
-`--map=castle` kale haritası, `--siege=N` N gerçek atış, `--siege-synth=N` N yapay 12 MJ darbe (denge testi).
+`--map=castle` kale haritası, `--siege=N` N gerçek atış, `--siege-synth=N` N yapay darbe (`--energy=7e6` darbe enerjisi, J), `--cw=TON` kale mancınığı karşı ağırlığı.
 `--launcher`: 0 rampa, 1 mancınık, 2 sapan, 3 top, 4 roket kızağı, 5 yıkım vinci (`--cut=SN` SN saniye sonra zinciri keser). `--ramp=0..4` rampa türü. `--ammo`: granite, basalt, mossy, sandstone, river, saw, steel, bomb, chain, multisaw, sticky. `--trace` ilk 2,5 sn'yi adım adım yazar.
 `-- --autotest --shots` ekran görüntüsü alır (görüntülü ortam gerekir).
 

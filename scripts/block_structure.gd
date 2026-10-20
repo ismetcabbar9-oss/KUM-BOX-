@@ -19,6 +19,8 @@ const MATERIALS := {
 	"steel": {"kind": "metal", "density": 1600.0, "strength": 600000.0, "split": 0.0},
 	"glass": {"kind": "glass", "density": 2500.0, "strength": 800.0, "split": 0.0},
 	"concrete": {"kind": "concrete", "density": 2200.0, "strength": 30000.0, "split": 12000.0},
+	# Kesme taş örgü (kale): kopunca BrickPool ile tuğlalara ayrılır
+	"masonry": {"kind": "stone", "density": 2300.0, "strength": 8000.0, "split": 0.0},
 }
 const GAP := 0.03
 
@@ -32,11 +34,22 @@ var _instance_of := {}  # Destructible -> [MultiMesh, index, mesh, def]
 var columns := {}  # ayak no -> [Destructible]
 var min_columns := 0
 var _toppled := false
+## Örgü bloklarını tuğlalara ayıran havuz (yalnız "masonry" malzemesi)
+var brick_pool: BrickPool
 
 
 static func material(mat_name: String) -> Material:
 	if _mat_cache.has(mat_name):
 		return _mat_cache[mat_name]
+	if mat_name == "masonry":
+		var sm := ShaderMaterial.new()
+		sm.shader = load("res://shaders/masonry.gdshader")
+		var t := "res://assets/textures/rock_boulder_dry_%s_1k.jpg"
+		sm.set_shader_parameter("albedo_tex", load(t % "diff"))
+		sm.set_shader_parameter("normal_tex", load(t % "nor_gl"))
+		sm.set_shader_parameter("arm_tex", load(t % "arm"))
+		_mat_cache[mat_name] = sm
+		return sm
 	var m: StandardMaterial3D
 	match mat_name:
 		"stone":
@@ -57,6 +70,16 @@ static func material(mat_name: String) -> Material:
 			m.cull_mode = BaseMaterial3D.CULL_DISABLED
 	_mat_cache[mat_name] = m
 	return m
+
+
+## Tek MeshInstance olarak çizilen örgü bloğu: boyut malzemeye yazılır (boyut başına bir kopya)
+static func _masonry_sized(size: Vector3) -> Material:
+	var key := "masonry_%.2f_%.2f_%.2f" % [size.x, size.y, size.z]
+	if not _mat_cache.has(key):
+		var m := material("masonry").duplicate() as ShaderMaterial
+		m.set_shader_parameter("fixed_size", Color(size.x, size.y, size.z, 0.5))
+		_mat_cache[key] = m
+	return _mat_cache[key]
 
 
 static func _pbr(tex: String, scale: float, tint: Color) -> StandardMaterial3D:
@@ -119,6 +142,7 @@ func finalize() -> void:
 		var g: Dictionary = _groups[k]
 		var mm := MultiMesh.new()
 		mm.transform_format = MultiMesh.TRANSFORM_3D
+		mm.use_custom_data = true  # örgü gölgelendiricisi için blok boyutu
 		mm.mesh = g["mesh"]
 		mm.instance_count = g["count"]
 		g["mm"] = mm
@@ -132,6 +156,7 @@ func finalize() -> void:
 		var size: Vector3 = d["size"]
 		var b := Destructible.new()
 		b.name = "b%d" % idx
+		b.set_meta("def", idx)
 		idx += 1
 		b.transform = Transform3D(d["basis"], d["pos"])
 		if d["shape"] == "cylinder":
@@ -154,6 +179,7 @@ func finalize() -> void:
 		var i: int = g["next"]
 		g["next"] = i + 1
 		mm.set_instance_transform(i, b.transform)
+		mm.set_instance_custom_data(i, Color(size.x, size.y, size.z, 0.5))
 		_instance_of[b] = [mm, i, g["mesh"], d]
 		if int(d["column"]) >= 0:
 			columns.get_or_add(int(d["column"]), []).append(b)
@@ -213,6 +239,12 @@ func _on_block_released(b: Destructible) -> void:
 	var mi := MeshInstance3D.new()
 	mi.mesh = info[2]
 	b.add_child(mi)
+	if d["mat"] == "masonry" and brick_pool:
+		var sz: Vector3 = d["size"]
+		mi.material_override = _masonry_sized(sz)
+		b.set_meta("block_size", sz)
+		b.shatter_pool = brick_pool
+		return
 	var split: float = MATERIALS[d["mat"]]["split"]
 	if split > 0.0 and d["shape"] == "box":
 		b.make_splittable(d["size"], material(d["mat"]), split)

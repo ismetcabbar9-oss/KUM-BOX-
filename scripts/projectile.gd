@@ -59,7 +59,7 @@ func setup(ammo_id: String, r: float, rolling: bool) -> void:
 	var def: Dictionary = AMMO[ammo]
 	var density: float = def["density"]
 	collision_layer = 4
-	collision_mask = 1 | 2 | 4 | 8
+	collision_mask = 1 | 2 | 4 | 8 | 16
 	continuous_cd = true
 	contact_monitor = true
 	max_contacts_reported = 2
@@ -385,9 +385,11 @@ func _predictive_strike(delta: float) -> void:
 
 func _thaw_nearby() -> void:
 	for hit in _shape_query(radius * 2.5, global_position + linear_velocity * 0.15, 2):
-		var d := hit["collider"] as Destructible
-		if d:
-			d.thaw()
+		var c: Object = hit["collider"]
+		if c is Destructible:
+			(c as Destructible).thaw()
+		elif c and c.has_meta("pool"):
+			c.get_meta("pool").thaw(c)
 
 
 ## Patlama: çevredeki yapıya enerji, serbest gövdelere itki, ses/ışık/duman.
@@ -401,10 +403,16 @@ func explode() -> void:
 	var energy := 6.0e6 * pow(k, 3.0)
 	var blast_r := 9.0 * k
 	Building.strike(get_world_3d(), p, energy, Vector3.UP * 0.3, self)
-	for hit in _shape_query(blast_r, p, 2 | 4 | 8):
+	for hit in _shape_query(blast_r, p, 2 | 4 | 8 | 16):
 		var b := hit["collider"] as RigidBody3D
 		if b == null or b == self:
 			continue
+		if b is Soldier:
+			var to_s := b.global_position - p
+			(b as Soldier).die((to_s.normalized() + Vector3.UP).normalized() * clampf(40.0 / maxf(to_s.length(), 1.0), 2.0, 14.0))
+			continue
+		if b.has_meta("pool"):
+			b.get_meta("pool").thaw(b)
 		if b is Destructible:
 			var d := b as Destructible
 			if d.intact:

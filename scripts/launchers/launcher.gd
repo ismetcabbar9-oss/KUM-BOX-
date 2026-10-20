@@ -77,6 +77,22 @@ func flight_hint() -> String:
 	return ""
 
 
+## Ekip (iki taş devri adamı): global dönüşümler (+Z yüzü ileri bakar)
+func crew_spots() -> Array:
+	var face := Basis.looking_at(-global_transform.basis.z, Vector3.UP)
+	return [Transform3D(face, global_transform * Vector3(3.6, 0, -2.5)),
+		Transform3D(face, global_transform * Vector3(-3.6, 0, -2.5))]
+
+
+## "idle" / "strain" (kayayı iterken)
+func crew_mode() -> String:
+	return "idle"
+
+
+func crew_step_rate() -> float:
+	return 0.0
+
+
 ## Fırlatıcı belirli mermiyi zorunlu kılar (ör. vinç: çelik gülle). Boş: seçili mermi
 func forced_ammo() -> String:
 	return ""

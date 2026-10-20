@@ -9,6 +9,7 @@ import io
 import json
 import os
 import shutil
+import subprocess
 import sys
 import urllib.parse
 import urllib.request
@@ -45,6 +46,9 @@ SKETCHFAB = {
     "pine_a": ("fbd656918d5e4126b82c7b41432aff5f", 1024),
     "pine_b": ("dc3fbd9205cf4027a4455d1f415e0478", 1024),
     "log_pile": ("3f4205a30a7d4adda50c775fb8cce06c", 1024),
+    "caveman_a": ("3ba4da569fae4f2eb1a84988c90cc5ed", 1024),
+    "caveman_b": ("83d99a21ce154571bdf6d4ecef2fe183", 1024),
+    "soldier": ("271c26d2137a46f6911b09566b552d14", 512),
 }
 POLYHAVEN = {"barrel": "Barrel_01", "crate": "wooden_crate_02"}
 
@@ -61,7 +65,9 @@ def sketchfab(name, uid):
     if not os.path.exists(os.path.join(dst, "scene.gltf")):
         info = json.loads(get(f"https://api.sketchfab.com/v3/models/{uid}", h))
         dl = json.loads(get(f"https://api.sketchfab.com/v3/models/{uid}/download", h))
-        zipfile.ZipFile(io.BytesIO(get(dl["gltf"]["url"]))).extractall(dst)
+        # Büyük arşivler: curl (urllib uzun indirmede kopuyor)
+        data = subprocess.run(["curl", "-sfL", "--retry", "3", dl["gltf"]["url"]], check=True, capture_output=True).stdout
+        zipfile.ZipFile(io.BytesIO(data)).extractall(dst)
         json.dump({"title": info["name"], "author": info["user"]["displayName"],
                    "license": info["license"]["label"], "url": info["viewerUrl"]}, open(info_path, "w"))
     return dst, json.load(open(info_path))
