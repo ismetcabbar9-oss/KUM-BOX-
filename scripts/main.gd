@@ -43,11 +43,12 @@ func _ready() -> void:
 	Destructible.spawned = 0
 	_build_environment()
 	WorldBuilder.build_ground(self)
-	WorldBuilder.build_ramp(self, RAMP_W, RAMP_H, RAMP_FLAT, RAMP_SLOPE, RAMP_RUNOUT)
-	_build_launchers()
 	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--ramp="):
+			RampLauncher.type_index = int(a.get_slice("=", 1))
 		if a.begins_with("--map="):
 			map_name = a.get_slice("=", 1)
+	_build_launchers()
 	if map_name == "castle":
 		_build_castle()
 	else:
@@ -76,6 +77,9 @@ func _ready() -> void:
 	hud.slowmo_toggled.connect(func(on: bool) -> void:
 		Engine.time_scale = 0.3 if on else 1.0
 		Sfx.set_slow_motion(on))
+	hud.option_pressed.connect(func() -> void:
+		launcher.cycle_option()
+		_reload_if_waiting())
 	hud.quality_pressed.connect(func() -> void: _apply_quality((quality + 1) % QUALITY.size()))
 	hud.set_map_name(MAPS[map_name])
 	hud.map_pressed.connect(func() -> void:
@@ -170,14 +174,13 @@ func _build_environment() -> void:
 
 
 func _build_launchers() -> void:
-	var ramp := RampLauncher.new()
-	ramp.height = RAMP_H
-	ramp.flat = RAMP_FLAT
-	ramp.width = RAMP_W
-	_add_launcher(ramp, Vector3.ZERO)
+	_add_launcher(RampLauncher.new(), Vector3.ZERO)
 	_add_launcher(Trebuchet.new(), Vector3(-42, 0, 120))
 	_add_launcher(Slingshot.new(), Vector3(42, 0, 140))
 	_add_launcher(AirCannon.new(), Vector3(-22, 0, 160))
+	_add_launcher(RocketSled.new(), Vector3(22, 0, 120))
+	if map_name != "castle":
+		_add_launcher(WreckingCrane.new(), Vector3(30, 0, RAMP_FLAT + RAMP_SLOPE + RAMP_RUNOUT + 105.0))
 
 
 func _add_launcher(l: Launcher, pos: Vector3) -> void:
@@ -237,6 +240,12 @@ func _build_targets() -> void:
 	_vehicle("truck", 6.0, 6500.0, Vector3(sx + 3.5, 0, z0 + 58.0), -85.0)
 	_building("factory", "brick", Vector3(sx, 0, z0 + 80.0), -90.0)
 
+	# ROKET şeridi (x=22): elektrik hattı -> beton köprü -> konteyner yığını
+	var rx := 22.0
+	_power_line(Vector3(rx - 9.0, 0, z0 + 14.0), Vector3(rx + 9.0, 0, z0 + 14.0), 3)
+	_structure(Structures.bridge(), Vector3(rx, 0, z0 + 34.0), 0.0)
+	_container_stack(Vector3(rx, 0, z0 + 58.0))
+
 
 ## Dev kale haritası: yalnız kale (+ önünde birkaç bariyer)
 func _build_castle() -> void:
@@ -280,6 +289,39 @@ func _vehicle(model_name: String, length: float, body_mass: float, pos: Vector3,
 
 
 ## Çelik I-kiriş yığını (4 + 3 + 2): ağır, kırılmaz, birbirinin üstünden kayar
+## Elektrik hattı: n direk ve aralarında sarkık kablolar. Direklerden biri kırılınca
+## ona bağlı kablolar kopar (gizlenir) ve kopma sesi çıkar.
+func _power_line(a: Vector3, b: Vector3, n: int) -> void:
+	var poles: Array[BlockStructure] = []
+	for i in n:
+		var p := Structures.power_pole()
+		_structure(p, a.lerp(b, float(i) / (n - 1)), 0.0)
+		poles.append(p)
+	var cable_mat := StandardMaterial3D.new()
+	cable_mat.albedo_color = Color(0.08, 0.08, 0.08)
+	cable_mat.roughness = 0.6
+	for i in n - 1:
+		for side in [-1.0, 1.0]:
+			var p0 := poles[i].position + Vector3(0, 8.75, side * 1.0)
+			var p1 := poles[i + 1].position + Vector3(0, 8.75, side * 1.0)
+			# Zincir eğrisi yaklaşığı: parabolik sarkma, kısa silindir parçaları
+			var im := ImmediateMesh.new()
+			im.surface_begin(Mesh.PRIMITIVE_LINE_STRIP, cable_mat)
+			for k in 17:
+				var t := k / 16.0
+				im.surface_add_vertex(p0.lerp(p1, t) + Vector3.DOWN * 1.2 * 4.0 * t * (1.0 - t))
+			im.surface_end()
+			var mi := MeshInstance3D.new()
+			mi.mesh = im
+			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			add_child(mi)
+			for pole in [poles[i], poles[i + 1]]:
+				pole.broke.connect(func(_b) -> void:
+					if mi.visible:
+						mi.visible = false
+						Sfx.play("chain", p0.lerp(p1, 0.5), 2.0))
+
+
 func _girder_pile(base: Vector3) -> void:
 	var mat := BlockStructure.material("steel")
 	var size := Vector3(7.0, 0.5, 0.36)
@@ -488,6 +530,11 @@ func _reload_if_waiting() -> void:
 	_reload()
 
 
+## Uçuşta ayrılan mermiler (zincirli gülle, üçlü testere) listeye girer
+func register_projectile(p: Projectile) -> void:
+	projectiles.append(p)
+
+
 func _discard(p: Projectile) -> void:
 	projectiles.erase(p)
 	if is_instance_valid(p):
@@ -502,6 +549,8 @@ func _reload() -> void:
 		if is_instance_valid(old):
 			old.queue_free()
 	var ammo: String = Projectile.ORDER[ammo_index]
+	if launcher.forced_ammo() != "":
+		ammo = launcher.forced_ammo()
 	var p := Projectile.new()
 	p.setup(ammo, launcher.base_radius * SIZES[size_index]["k"], launcher.rolling())
 	add_child(p)
@@ -511,13 +560,16 @@ func _reload() -> void:
 	hud.set_ammo_name(p.display_name())
 	hud.set_size_name(SIZES[size_index]["name"])
 	hud.set_ready(true, launcher.hint(), launcher.uses_button())
-	camera.follow(launcher.view_target, launcher.view_distance, launcher.global_rotation.y)
+	camera.follow(launcher.view_target, launcher.view_distance, launcher.heading())
+	hud.set_option(launcher.option_label())
 	camera.snap()
 
 
 func _on_fire_pressed() -> void:
 	if launcher.is_ready():
 		launcher.fire()
+	elif launcher.secondary():
+		hud.set_ready(false, "", true)
 	else:
 		_reload()
 
@@ -525,6 +577,8 @@ func _on_fire_pressed() -> void:
 func _on_fired(p: Projectile) -> void:
 	current = p
 	hud.set_ready(false, "", true)
+	if launcher.flight_hint() != "":
+		hud.set_flight(launcher.flight_hint())
 	camera.follow(p, 14.0 + p.radius * 2.0)
 
 
@@ -636,6 +690,20 @@ func _autotest() -> void:
 			sl.drag(Vector2(0, 14), vs)
 		print("Sapan gerilimi: ", sl.info())
 		sl.release(0.0)
+	elif launcher is WreckingCrane:
+		var wc := launcher as WreckingCrane
+		var vs := get_viewport().get_visible_rect().size
+		wc.press()
+		for k in 20:
+			wc.drag(Vector2(0, vs.y * 0.02), vs)
+		print("Vinç: ", wc.info())
+		wc.release(0.0)
+		for a in args:
+			if a.begins_with("--cut="):
+				for f in int(float(a.get_slice("=", 1)) * 60.0):
+					await get_tree().physics_frame
+				print("Zincir kesildi, hız %.0f km/sa" % current.speed_kmh())
+				_on_fire_pressed()
 	else:
 		launcher.fire()
 	if "--trace" in args:
@@ -706,7 +774,7 @@ func _siege(n: int) -> void:
 			_reload()
 		if launcher is RampLauncher:
 			var r := launcher as RampLauncher
-			r.aim_x = aims[i % aims.size()]
+			r.aim = aims[i % aims.size()]
 			r.drag(Vector2.ZERO, Vector2.ONE)
 		await get_tree().physics_frame
 		launcher.fire()
@@ -752,6 +820,9 @@ func _shots() -> void:
 		[Vector3(-27, 12, z0 + 38), Vector3(-42, 9, z0 + 62)],
 		[Vector3(-11, 5, z0 + 35), Vector3(-22, 2, z0 + 47)],
 		[Vector3(31, 6, z0 + 38), Vector3(42, 2, z0 + 56)],
+		[Vector3(12, 9, 110), Vector3(22, 1, 150)],
+		[Vector3(6, 8, z0 + 2), Vector3(22, 5, z0 + 30)],
+		[Vector3(50, 16, z0 + 78), Vector3(14, 12, z0 + 105)],
 	]
 	camera.target = null
 	for k in views.size():

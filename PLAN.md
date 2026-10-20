@@ -23,12 +23,15 @@ otomatik test + ekran görüntüsü + commit + ZIP.
 - [x] Taşıyıcı ayak kuralı: 4 ayaklı yapılarda 2 ayak koparsa yapı devrilir.
 - [x] Yeni yapılar: ahşap gözetleme kulesi, çelik su kulesi (≈200 t su deposu), cam sera.
 - [x] Yeni objeler: 4 araç (terk edilmiş sedan, LADA 2107, Moskvitch kamyonet, kutu kamyon), çelik I-kiriş yığını, kütük yığını, çam ağaçları.
-- [ ] Köprü, elektrik direkleri (Aşama 4'teki rampa/harita çalışmasıyla birlikte).
+- [x] Köprü, elektrik direkleri (Aşama 4'te eklendi).
 
-## Aşama 4 — Rampa ve fırlatıcı çeşitleri
-- Rampalar: kıvrımlı, atlama (kicker), spiral, kayak atlama, çift şeritli.
-- Yeni fırlatıcı/araçlar: sarkaçlı yıkım vinci, buldozer, roket kızağı.
-- Yeni mermi: zincirli gülle, kesici disk (çoklu), yapışkan bomba.
+## Aşama 4 — Rampa ve fırlatıcı çeşitleri  ✅ (v0.6)
+- [x] Rampa türleri (AYAR butonu): klasik, kayak atlama, S-kıvrım (yatışlı), spiral, tepeli (kicker'lar).
+- [x] Roket kızağı: U-kanalda kızak, itki ayarı, tampona çarpınca mermi kalkış dudağından uçar.
+- [x] Sarkaçlı yıkım vinci: zincirli gülle geri çekilip savrulur, sallanırken zincir kesilebilir.
+- [x] Yeni mermi: zincirli gülle, üçlü testere, yapışkan bomba.
+- [x] Yeni hedef şeridi: elektrik hattı (kablolar direk kırılınca kopar) + beton köprü.
+- [ ] Buldozer ve çift şeritli rampa → Aşama 5'e (haritalarla birlikte).
 
 ## Aşama 5 — Görevler ve haritalar
 - Görev türleri: X atışta Y% yıkım, belirli hedefi düşür, zincirleme çöküş, süre.

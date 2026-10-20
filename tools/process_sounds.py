@@ -38,6 +38,7 @@ IDS = {
     "explosion_a": 235968, "explosion_b": 255111,
     "saw_free": 448133, "saw_cut": 267636,
     "catapult_launch": 479922,
+    "rocket_thrust": 515123, "rocket_launch": 182794, "chain": 387240, "beep": 459992,
     "countryside": 514550, "countryside_b": 458113,
     "rock_slide": 655368, "rockslide_b": 608957,
     "sling_1": 513934, "sling_2": 513933, "sling_3": 853649,
@@ -252,6 +253,17 @@ def main():
         if score < best_score:
             best, best_score = st, score
     write("ambient_loop", loop(amb[best:best + win], 3.0), 0.5)
+
+    # Roket: tutuşma (kısa) + itki döngüsü (kararlı bölüm)
+    thr = S["rocket_thrust"][:int(60 * SR)]
+    env = np.sqrt(np.convolve(thr ** 2, np.ones(SR) / SR, mode="valid")[::SR // 4])
+    st = int(np.argmax(env > env.max() * 0.7)) * (SR // 4) + SR
+    write("rocket_loop", loop(thr[st:st + int(5 * SR)], 0.6), 0.85)
+    write("rocket_ignite_0", fade(trim_silence(S["rocket_launch"])[:int(3 * SR)], 0.001, 1.0), 0.9)
+    # Zincir şıngırtısı ve bomba bip sesi
+    for i, seg in enumerate(slices(S["chain"], 2, 1.2, 1.0, 0.3)):
+        write(f"chain_{i}", seg, 0.7)
+    write("beep_0", fade(trim_silence(S["beep"])[:int(0.4 * SR)], 0.001, 0.05), 0.5)
 
     # Taş yığını çöküşü (kale)
     for i, k in enumerate(["rock_slide", "rockslide_b"]):

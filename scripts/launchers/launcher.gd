@@ -30,6 +30,20 @@ func rolling() -> bool:
 	return false
 
 
+## Fırlatıcıya özel ayar (ör. rampa türü). Boş = ayar yok
+func option_label() -> String:
+	return ""
+
+
+func cycle_option() -> void:
+	pass
+
+
+## İstasyon kamerasının bakış yönü (radyan, +Z = 0)
+func heading() -> float:
+	return global_rotation.y
+
+
 ## Parmak ekrana değdi (fırlatıcı hazırken)
 func press() -> void:
 	pass
@@ -51,6 +65,21 @@ func release(_swipe_up_speed: float) -> bool:
 
 func fire(_power := -1.0) -> void:
 	pass
+
+
+## Fırlattıktan sonra FIRLAT butonunun ikinci işlevi (ör. vinç: zinciri kes). true: kullanıldı
+func secondary() -> bool:
+	return false
+
+
+## Fırlattıktan sonra gösterilecek ipucu (boş: yok, buton YÜKLE olur)
+func flight_hint() -> String:
+	return ""
+
+
+## Fırlatıcı belirli mermiyi zorunlu kılar (ör. vinç: çelik gülle). Boş: seçili mermi
+func forced_ammo() -> String:
+	return ""
 
 
 ## Arayüzde gösterilecek nişan/güç bilgisi

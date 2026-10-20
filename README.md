@@ -1,4 +1,4 @@
-# Kaya Yuvarla — prototip v0.5
+# Kaya Yuvarla — prototip v0.6
 
 Geliştirme planı: [PLAN.md](PLAN.md) (kademeli aşamalar).
 
@@ -24,12 +24,25 @@ Sağdaki butonlar: **FIRLAT/YÜKLE**, **fırlatıcı** (dokundukça değişir), 
 | **MANCINIK** | yana: yön, yukarı/aşağı: karşı ağırlık (30–180 t) | menteşeli kol + serbest sallanan karşı ağırlık + kaşık; bırakma pimi 48°'de çözülür |
 | **DEV SAPAN** | çek-bırak: parmağı koy, geri (aşağı) çek, yana nişan al, bırakınca atar; güç = çekme mesafesi | iki lastik Hooke yasasıyla (F = k·x) çeker; ağır mermi daha yavaş çıkar |
 | **HAVA TOPU** | yana: yön, yukarı/aşağı: namlu açısı | sabit basınç enerjisi (½mv² = E) |
+| **ROKET KIZAĞI** | yukarı/aşağı: itki gücü, FIRLAT: ateşle | kızak kanalda roket itkisiyle hızlanır, tampona çarpıp durur; mermi ataletle 8° dudaktan uçar |
+| **YIKIM VİNCİ** | parmağı koy, aşağı çek: gülleyi kaldır, bırak: savur; sallanırken KES | bom ucuna menteşeli (PinJoint) 15 m zincir; gerçek sarkaç, kesince gülle teğet hızla uçar |
 
 Sapan ve topta sarı noktalar tahmini yörüngeyi gösterir.
 
 **Mermiler:** Granit, Bazalt, Yosunlu kaya, Kumtaşı, Dere taşı (gerçek kaya taramaları, farklı yoğunluklar), **Dönen testere** (yüksek devirle döner, yere değince ileri atılır, binaları keserek az enerji kaybeder), **Çelik gülle** (7.85 t/m³), **Patlayıcı varil** (çarpınca patlar: yapıya hasar + çevreye itki).
 
+**Yeni mermiler (v0.6):** **Zincirli gülle** (havada ikiye ayrılır, aradaki esnemez zincirle dönerek uçar), **Üçlü testere** (havada ±8° açıyla üç diske ayrılır), **Yapışkan bomba** (değdiği yere yapışır, hızlanan bip sesleriyle 1,8 sn sonra patlar; hareketli gövdeye iğnelenir).
+
 **Engeller:** dönen çelik pervane (kinematik), sallanan yıkım gülle sarkacı (gerçek menteşe), konteyner yığınları, beton bariyerler, tuğla duvar, variller, sandıklar, taşlar.
+
+## v0.6'da değişenler (Aşama 4)
+
+- **5 rampa türü** (AYAR butonu): KLASİK, KAYAK ATLAMA (kaya havalanır), S-KIVRIM (yatışlı virajlar), SPİRAL (72 m'den 1,25 tur), TEPELİ. Rampalar yol boyunca süpürülerek üretiliyor (`WorldBuilder.build_path_ramp`): yatış eğriliğe göre, duvarlar düşük sürtünmeli, ayaklar alttan geçen rampa kısmına basmıyor.
+- **Roket kızağı** (x=22 şeridi) ve **sarkaçlı yıkım vinci** (Sovyet apartmanın yanında).
+- **Zincirli gülle, üçlü testere, yapışkan bomba.**
+- **Yeni hedefler:** beton köprü (3 ayak, tabliye ayak koparsa çöker), elektrik hattı (ahşap direkler, kablolar direk kırılınca kopar).
+- Yeni gerçek sesler (Freesound CC0): roket ateşleme/itki döngüsü, zincir, bip.
+- Ertelendi: buldozer ve çift şeritli rampa (Aşama 5).
 
 ## v0.5'te değişenler (Aşama 3)
 
@@ -118,7 +131,7 @@ python3 tools/fetch_textures.py
 godot --headless --path . --fixed-fps 60 -- --autotest --launcher=1 --ammo=saw
 ```
 `--map=castle` kale haritası, `--siege=N` N gerçek atış, `--siege-synth=N` N yapay 12 MJ darbe (denge testi).
-`--launcher`: 0 rampa, 1 mancınık, 2 sapan, 3 top. `--ammo`: granite, basalt, mossy, sandstone, river, saw, steel, bomb. `--trace` ilk 2,5 sn'yi adım adım yazar.
+`--launcher`: 0 rampa, 1 mancınık, 2 sapan, 3 top, 4 roket kızağı, 5 yıkım vinci (`--cut=SN` SN saniye sonra zinciri keser). `--ramp=0..4` rampa türü. `--ammo`: granite, basalt, mossy, sandstone, river, saw, steel, bomb, chain, multisaw, sticky. `--trace` ilk 2,5 sn'yi adım adım yazar.
 `-- --autotest --shots` ekran görüntüsü alır (görüntülü ortam gerekir).
 
 ## Yol haritası

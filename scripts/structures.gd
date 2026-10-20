@@ -122,3 +122,44 @@ static func greenhouse() -> BlockStructure:
 		s.add_block(Vector3(cx, hgt + 0.08, 0), Vector3(xs[i + 1] - xs[i] - 0.04, 0.03, lz - p - 0.04), 1, "glass")
 	s.finalize()
 	return s
+
+
+## Beton köprü: 3 ayak (beton kolon), ayaklar üstünde başlık, 2.5 m'lik tabliye parçaları,
+## çelik korkuluk. X ekseni boyunca uzanır (yerel -12..+12). Ortadaki ayak koparsa iki
+## açıklık birden çöker.
+static func bridge() -> BlockStructure:
+	var s := BlockStructure.new()
+	s.name = "Kopru"
+	s.kind = "concrete"
+	s.max_span = 2.5
+	var h := 6.0
+	var seg := 2.5
+	var piers := [-10.0, 0.0, 10.0]
+	for px in piers:
+		for k in 3:
+			s.add_block(Vector3(px, h / 3.0 * k + h / 6.0, 0), Vector3(1.2, h / 3.0 - 0.02, 1.6), k, "concrete")
+		s.add_block(Vector3(px, h + 0.3, 0), Vector3(2.0, 0.58, 6.0), 3, "concrete")  # başlık
+	# Tabliye: başlıkların üstünden -12.5..+12.5
+	var n := 10
+	for i in n:
+		var x := -12.5 + seg * (i + 0.5)
+		s.add_block(Vector3(x, h + 0.8, 0), Vector3(seg - 0.02, 0.4, 6.0), 4, "concrete")
+		for sz in [-1.0, 1.0]:
+			s.add_block(Vector3(x, h + 1.5, sz * 2.85), Vector3(seg - 0.02, 0.1, 0.1), 5, "steel")
+			s.add_block(Vector3(x - seg * 0.5 + 0.1, h + 1.25, sz * 2.85), Vector3(0.1, 0.38, 0.1), 5, "steel")
+	s.finalize()
+	return s
+
+
+## Ahşap elektrik direği: 3 parça gövde + üstte travers (çapraz kol). top_point(): kablo ucu.
+static func power_pole() -> BlockStructure:
+	var s := BlockStructure.new()
+	s.name = "Direk"
+	s.kind = "wood"
+	s.max_span = 1.0
+	s.min_columns = 1
+	for k in 3:
+		s.add_block(Vector3(0, 3.0 * k + 1.5, 0), Vector3(0.3, 2.98, 0.3), k, "wood", {"shape": "cylinder", "column": 0})
+	s.add_block(Vector3(0, 8.6, 0), Vector3(0.16, 0.16, 2.4), 3, "wood")
+	s.finalize()
+	return s

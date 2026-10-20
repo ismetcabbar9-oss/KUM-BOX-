@@ -9,6 +9,7 @@ signal size_pressed
 signal slowmo_toggled(on: bool)
 signal quality_pressed
 signal map_pressed
+signal option_pressed
 
 var speed_label: Label
 var destroy_label: Label
@@ -16,6 +17,7 @@ var size_button: Button
 var fire_button: Button
 var launcher_button: Button
 var ammo_button: Button
+var option_button: Button
 var info_label: Label
 var hint_label: Label
 var fps_label: Label
@@ -113,6 +115,7 @@ func _ready() -> void:
 	fire_button.custom_minimum_size = Vector2(250, 104)
 	fire_button.add_theme_font_size_override("font_size", 38)
 	launcher_button = _button(buttons, "RAMPA", func() -> void: launcher_pressed.emit())
+	option_button = _button(buttons, "AYAR", func() -> void: option_pressed.emit())
 	ammo_button = _button(buttons, "GRANİT", func() -> void: ammo_pressed.emit())
 	size_button = _button(buttons, "ORTA", func() -> void: size_pressed.emit())
 	var slow := _button(buttons, "AĞIR ÇEKİM", func() -> void: pass)
@@ -241,8 +244,21 @@ func set_ready(ready: bool, hint: String, button_active := true) -> void:
 	hint_label.visible = ready and hint != ""
 
 
+## Fırlatma sonrası ikinci işlev (ör. vinç zinciri): buton KES olur
+func set_flight(hint: String) -> void:
+	fire_button.text = "KES"
+	fire_button.disabled = false
+	hint_label.text = hint
+	hint_label.visible = true
+
+
 func set_info(text: String) -> void:
 	info_label.text = text
+
+
+func set_option(text: String) -> void:
+	option_button.text = text
+	option_button.visible = text != ""
 
 
 func set_launcher_name(n: String) -> void:

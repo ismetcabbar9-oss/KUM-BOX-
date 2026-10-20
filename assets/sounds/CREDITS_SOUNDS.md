@@ -37,6 +37,10 @@ Tüm kayıtlar Freesound.org, **Creative Commons 0**. İşlenmiş hâlleri (kesm
 - [Circular Saw by derjuli](https://freesound.org/people/derjuli/sounds/448133/) — derjuli
 - [Saw Cutting by BrainClaim](https://freesound.org/people/BrainClaim/sounds/267636/) — BrainClaim
 - [R01-04-Catapult Launch.wav by craigsmith](https://freesound.org/people/craigsmith/sounds/479922/) — craigsmith
+- [Rocket Thrust 01 by LilMati](https://freesound.org/people/LilMati/sounds/515123/) — LilMati
+- [Rocket Launch.flac by qubodup](https://freesound.org/people/qubodup/sounds/182794/) — qubodup
+- [chain by nettimato](https://freesound.org/people/nettimato/sounds/387240/) — nettimato
+- [Beep Short by florianreichelt](https://freesound.org/people/florianreichelt/sounds/459992/) — florianreichelt
 - [Countryside Ambience Spring by Kinoton](https://freesound.org/people/Kinoton/sounds/514550/) — Kinoton
 - [Countryside by brunoboselli](https://freesound.org/people/brunoboselli/sounds/458113/) — brunoboselli
 - [rock slide.wav by 21100495](https://freesound.org/people/21100495/sounds/655368/) — 21100495
