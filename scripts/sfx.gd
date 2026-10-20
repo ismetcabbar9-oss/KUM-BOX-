@@ -15,14 +15,17 @@ var _ambient: AudioStreamPlayer
 func _ready() -> void:
 	_setup_buses()
 	_streams = {
-		"rock": _load_set("rock_impact_", 3),
-		"brick": _load_set("brick_impact_", 3),
-		"concrete": _load_set("brick_impact_", 3),
-		"wood": _load_set("wood_impact_", 2),
-		"metal": _load_set("wood_impact_", 2),
-		"debris": _load_set("debris_", 3),
-		"crash": [load(S + "crash_big.wav")],
+		"rock": _load_set("rock_impact_", 6),
+		"concrete": _load_set("concrete_impact_", 7),
+		"wood": _load_set("wood_impact_", 5),
+		"metal": _load_set("metal_impact_", 3),
+		"debris": _load_set("debris_", 6),
+		"crash": _load_set("crash_big_", 3),
+		"glass": _load_set("glass_", 3),
 	}
+	# Tuğla ve taş da beton kayıtlarını kullanır (perde farkıyla)
+	_streams["brick"] = _streams["concrete"]
+	_streams["stone"] = _streams["concrete"]
 	for i in POOL_SIZE:
 		var p := AudioStreamPlayer3D.new()
 		p.bus = "SFX"
@@ -33,9 +36,9 @@ func _ready() -> void:
 		add_child(p)
 		_pool.append(p)
 	_ambient = AudioStreamPlayer.new()
-	_ambient.stream = load(S + "wind_loop.wav")
+	_ambient.stream = load(S + "wind_loop.ogg")
 	_ambient.bus = "Ambient"
-	_ambient.volume_db = -14.0
+	_ambient.volume_db = -10.0
 	add_child(_ambient)
 	_ambient.play()
 
@@ -72,7 +75,7 @@ func _setup_buses() -> void:
 func _load_set(prefix: String, count: int) -> Array:
 	var arr := []
 	for i in count:
-		arr.append(load(S + prefix + str(i) + ".wav"))
+		arr.append(load(S + prefix + str(i) + ".ogg"))
 	return arr
 
 
@@ -97,18 +100,25 @@ func _play(kind: String, pos: Vector3, volume_db: float, pitch: float) -> void:
 ## strength: çarpışmadaki hız değişimi (m/s).
 func impact(kind: String, pos: Vector3, strength: float) -> void:
 	var vol := linear_to_db(clampf(strength / 12.0, 0.08, 1.0)) + 4.0
-	var pitch := randf_range(0.85, 1.12)
+	var pitch := randf_range(0.88, 1.1)
 	match kind:
-		"metal":
-			pitch *= 2.2
-		"concrete":
-			pitch *= 0.8
+		"stone":
+			pitch *= 0.75
+		"brick":
+			pitch *= 1.1
 		"rock":
-			pitch *= 0.9
 			vol += 4.0
 	_play(kind, pos, vol, pitch)
 	if kind == "rock" and strength > 25.0:
-		_play("crash", pos, 6.0, randf_range(0.9, 1.05))
+		crash(pos)
+
+
+func crash(pos: Vector3) -> void:
+	_play("crash", pos, 4.0, randf_range(0.9, 1.05))
+
+
+func glass(pos: Vector3) -> void:
+	_play("glass", pos, -2.0, randf_range(0.9, 1.1))
 
 
 func debris(pos: Vector3, strength: float) -> void:

@@ -4,3 +4,5 @@
 export/
 *.apk
 *.aab
+.sound_cache/
+.model_cache/

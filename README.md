@@ -1,81 +1,95 @@
-# Kaya Yuvarla — prototip v0.1
+# Kaya Yuvarla — prototip v0.2
 
-Gerçekçi fizikli, dokunmatik kontrollü 3D mobil sandbox. Uzun beton rampadan kaya yuvarla; duvarı, sütunları, sandıkları ve binaları yık.
+Gerçekçi fizikli, dokunmatik kontrollü 3D mobil sandbox. Uzun beton rampadan kaya yuvarla; bariyerleri, duvarı ve **gerçek bina modellerini** yık.
 
 - **Motor:** Godot 4.7.2 (stable), Mobile renderer
-- **Fizik:** Jolt Physics (Godot'ta yerleşik)
+- **Fizik:** Jolt Physics (Godot'ta yerleşik), fizik interpolasyonu açık
 - **Hedef:** Android (dokunmatik), yatay ekran
 
 ## Açma / test
 
-1. Godot 4.7.2'yi indir: https://godotengine.org/download
-2. Godot → **Import** → bu klasördeki `project.godot`.
-3. **F5** ile çalıştır. Masaüstünde fare dokunmatiği taklit eder (sol tık = parmak).
-
-İlk açılışta dokular içe aktarılır (birkaç saniye).
+1. Godot 4.7.2: https://godotengine.org/download
+2. Godot → **Import** → `project.godot`. İlk açılışta modeller/dokular içe aktarılır (biraz sürer).
+3. **F5**. Masaüstünde fare dokunmatiği taklit eder.
 
 ## Kontroller (sadece dokunmatik)
 
 | Hareket | Ne yapar |
 |---|---|
-| Sağa-sola sürükle (fırlatmadan önce) | Kayayı rampada hizala |
-| Yukarı hızlı kaydır | Kayayı it (kaydırma hızı = itiş gücü) |
-| **İT** butonu | Sabit güçle it |
-| Tek parmak sürükle (fırlattıktan sonra) | Kamerayı döndür |
+| Sağa-sola sürükle (fırlatmadan önce) | Kayayı hizala |
+| Yukarı hızlı kaydır | İt (kaydırma hızı = güç) |
+| **İT** | Sabit güçle it |
+| Tek parmak (fırlattıktan sonra) | Kamerayı döndür |
 | İki parmak kıstır | Yakınlaştır / uzaklaştır |
-| **YENİ KAYA** | Tepeye yeni kaya koy (en fazla 4 kaya sahnede kalır) |
-| **BOYUT** | Küçük / Orta / Büyük kaya |
-| **AĞIR ÇEKİM** | Zaman %30, ses perdesi de düşer |
-| **SIFIRLA** | Seviyeyi baştan kur |
+| **YENİ KAYA / BOYUT / AĞIR ÇEKİM / SIFIRLA** | — |
+| **GRAFİK** | Düşük / Orta / Yüksek (mobilde varsayılan Orta) |
+| **LİSANSLAR** | Model/ses atıfları |
 
-## İçerik
+Sol üstte FPS ve draw call sayısı görünür (telefonda test için).
 
-- 55 m yüksek, ~190 m uzun beton rampa (düz başlangıç platformu → dik iniş → yumuşak düzlük)
-- Kaya: gürültüyle şekillendirilmiş mesh, küre çarpışma, granit yoğunluğu (Orta ≈ 80 ton)
-- ~480 fizik parçası: şaşırtmalı tuğla duvar, kirişli sütun kalıntısı, sandık piramidi, variller, 3 panel bina (4, 3 ve 6 kat)
-- Parçalar uykuda başlar (performans); çarpışma darbesine göre malzemeye özgü ses + toz
-- HDRI gökyüzü, AgX tonlama, sis, yön ışığı gölgeleri, tepelik arazi
-- Ses: kaya çarpması, tuğla/beton kırılma, ahşap, moloz, yuvarlanma döngüsü (hıza bağlı), rüzgâr ambiyansı; sıkıştırıcı + açık alan yankısı + limiter
+## v0.2'de değişenler
+
+- **Gerçek binalar** (Sketchfab, CC-BY): Sovyet panel apartman, Asya tipi kule blok, eski köşe bina, terk edilmiş tuğla fabrika, trafo binası.
+  `tools/fracture_buildings.gd` her modeli önceden 4 m civarı hücrelere keser (toplam ~250 parça). Bina sağlamken **tek mesh** çizilir; ilk darbede parçalara geçer. Parçalar modelin kendi dokusunu taşır.
+- **Gerçek kaya taraması** (yuvarlanan kaya + dekor kayalar), **beton bariyerler**, **variller**, **sandıklar**, **dinamik taşlar**.
+- **Gerçek ses kayıtları** (Freesound, CC0): beton/kaya kırılması, moloz, bina çöküşü, cam, ahşap, metal, yuvarlanma, rüzgâr. Sentetik sesler kaldırıldı. Ağır kaya darbeleri: gerçek kayıt + yavaşlatılmış kopya + gövde katmanı.
+- **Gereksiz arazi kaldırıldı**: rampa beton ayaklar üzerinde; zemin tek düzlem (2 üçgen) + tekrar desenini kıran shader.
+- **Performans (kasma düzeltmeleri)**:
+  - Parçalarda temas izleme (contact monitor) ve her karede script kaldırıldı; uyuyan gövde hiç kod çalıştırmaz.
+  - Binalar sağlamken 1 draw call; kırılınca parçalar görünür.
+  - Uzun süre yerinde titreyen moloz dondurulur; yeni kaya yaklaşınca çözülür.
+  - Kaya durunca uyur (aksi hâlde dokunduğu tüm yığını uyanık tutuyordu).
+  - Jolt adımları 6/1, uyku eşiği yükseltildi, fizik interpolasyonu.
+  - Grafik kalitesi: gölge bölmeleri/mesafe, MSAA, 3D çözünürlük ölçeği.
+  - Ölçüm (bu geliştirme sunucusu, render hariç, 60 Hz): boşta ~0.4 ms/kare, en yoğun yıkımda ~1.5–2 ms/kare; 30 sn'lik test simülasyonu toplam ~0.9 sn işlem.
+- Hata düzeltmesi: Godot 4.7 + Jolt'ta ağaca girerken verilen uyku komutu yok sayılıyordu; parçalar ilk fizik karesinden sonra uyutuluyor.
 
 ## Dosya yapısı
 
 ```
-project.godot           proje ayarları (Jolt, Mobile renderer, dokunmatik)
-scenes/main.tscn        ana sahne
-scripts/main.gd         seviye kurulumu, girdi, oyun durumu
-scripts/world_builder.gd rampa / arazi / kaya mesh'i, PBR malzemeler
-scripts/rock.gd         oyuncu kayası
-scripts/destructible.gd yıkılabilir parça (darbe → ses/toz)
-scripts/game_camera.gd  takip kamerası
-scripts/hud.gd          dokunmatik arayüz
-scripts/sfx.gd          ses havuzu + bus/efektler (autoload)
-scripts/fx.gd           toz parçacıkları + kamera sarsıntısı (autoload)
-assets/textures         Poly Haven CC0 PBR dokular (1K)
-assets/hdri             Poly Haven CC0 HDRI gökyüzü
-assets/sounds           tools/gen_sounds.py ile üretilmiş sesler
+scripts/main.gd            seviye, girdi, grafik kalitesi, otomatik test
+scripts/building.gd        gerçek bina + önceden kesilmiş parçalar
+scripts/destructible.gd    yıkılabilir parça (ses/toz, uyku/dondurma)
+scripts/rock.gd            oyuncu kayası
+scripts/models.gd          glTF yardımcıları (ölçek, dışbükey örtü)
+scripts/world_builder.gd   ayaklı rampa, zemin, PBR malzemeler
+scripts/game_camera.gd     takip kamerası
+scripts/hud.gd             dokunmatik arayüz, lisans paneli
+scripts/sfx.gd, fx.gd      ses havuzu/bus'lar, toz + sarsıntı (autoload)
+assets/models/             işlenmiş modeller (dokular ≤2K)
+assets/buildings/*.scn     kesilmiş binalar (fracture aracının çıktısı)
+assets/sounds/             işlenmiş ses kayıtları (OGG)
+tools/prepare_models.py    Sketchfab/Poly Haven indir + dokuları küçült
+tools/fracture_buildings.gd binaları parçalara böl
+tools/process_sounds.py    Freesound CC0 indir + kes/katmanla
 ```
 
-## Varlık lisansları
+Varlıkları yeniden üretmek:
+```
+SKETCHFAB_API_TOKEN=... python3 tools/prepare_models.py
+godot --headless --path . --import
+godot --headless --path . -s res://tools/fracture_buildings.gd
+python3 tools/process_sounds.py
+```
 
-- Dokular ve HDRI: [Poly Haven](https://polyhaven.com), **CC0** (ticari kullanım serbest, atıf gerekmez).
-- Sesler: bu projede prosedürel üretildi (`python3 tools/gen_sounds.py`), proje sahibine ait.
-- Sketchfab: indirme hesap/API anahtarı ister ve modellerin lisansı tek tek kontrol edilmeli. Ücretli oyunda CC-BY-NC modeller kullanılamaz. Sonraki aşamada CC0/CC-BY modellerle (araçlar, ağaçlar, detaylı binalar) eklenecek.
+## Lisanslar
 
-## Android'e aktarma
-
-`export_presets.cfg` içinde Android ön ayarı var. Godot'ta: Editor → Manage Export Templates → 4.7.2 indir; Editor Settings'te Android SDK/JDK yolu ve debug keystore; Project → Export → Android.
+- Modeller: `assets/models/CREDITS_MODELS.md` (Sketchfab **CC-BY 4.0** → oyunda ve mağaza sayfasında atıf gerekli; oyunda LİSANSLAR panelinde gösteriliyor). Poly Haven modelleri CC0.
+- Sesler: `assets/sounds/CREDITS_SOUNDS.md` (hepsi **CC0**).
+- Dokular ve HDRI: Poly Haven, CC0.
 
 ## Geliştirici testi
 
 ```
-godot --headless --path . -- --autotest
+godot --headless --path . --fixed-fps 60 -- --autotest
 ```
-Kayayı otomatik fırlatır, 30 sn boyunca konum/hız/yıkım sayısını yazdırır.
+Kayayı fırlatır; her simülasyon saniyesinde konum, hız, yıkılan/uyanık parça, kırık bina ve işlem süresini yazar.
+`-- --autotest --shots` ekran görüntüsü alır (görüntülü ortam gerekir).
 
 ## Yol haritası
 
-1. **v0.1 (bu sürüm):** temel oynanış — rampa, kaya, yıkılabilir yapılar, ses, dokunmatik.
-2. **v0.2:** kırılma (parçalara bölünen paneller), daha zengin ses (gerçek kayıtlar), kalite ayarları (düşük/orta/yüksek), FPS ölçümü gerçek cihazda.
-3. **v0.3:** birden çok harita, hedef/görev modu (yıkım yüzdesi, süre), yıldız puanı.
-4. **v0.4:** yeni eylemler — sapan/mancınık, bomba kaya, çoklu kaya, araçlar, tekrar oynatma (replay) kamerası.
-5. **Yayın:** optimizasyon, menü, ayarlar, Play Store sürümü.
+1. ~~v0.1: temel oynanış~~
+2. **v0.2 (bu sürüm):** gerçek modeller, gerçek sesler, parçalanan binalar, performans.
+3. **v0.3:** gerçek telefonda profil (FPS hedefi 60), birden çok harita, görev modu (yıkım %, süre, yıldız).
+4. **v0.4:** yeni eylemler — mancınık, çoklu kaya, araçlar, tekrar oynatma kamerası.
+5. **Yayın:** menü, ayarlar, Play Store sürümü.

@@ -6,12 +6,16 @@ signal new_rock_pressed
 signal reset_pressed
 signal size_pressed
 signal slowmo_toggled(on: bool)
+signal quality_pressed
 
 var speed_label: Label
 var destroy_label: Label
 var size_button: Button
 var push_button: Button
 var hint_label: Label
+var fps_label: Label
+var quality_button: Button
+var credits_panel: PanelContainer
 var _slowmo := false
 
 
@@ -59,6 +63,22 @@ func _ready() -> void:
 	stats.add_child(speed_label)
 	destroy_label = Label.new()
 	stats.add_child(destroy_label)
+	fps_label = Label.new()
+	fps_label.add_theme_font_size_override("font_size", 18)
+	stats.add_child(fps_label)
+
+	# Sağ üst: grafik kalitesi + lisanslar
+	var top := HBoxContainer.new()
+	top.size_flags_horizontal = Control.SIZE_SHRINK_END
+	top.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	top.add_theme_constant_override("separation", 10)
+	margin.add_child(top)
+	quality_button = _button(top, "GRAFİK: ORTA", func() -> void: quality_pressed.emit())
+	quality_button.custom_minimum_size = Vector2(200, 56)
+	quality_button.add_theme_font_size_override("font_size", 20)
+	var lic := _button(top, "LİSANSLAR", func() -> void: credits_panel.visible = not credits_panel.visible)
+	lic.custom_minimum_size = Vector2(150, 56)
+	lic.add_theme_font_size_override("font_size", 20)
 
 	# Sağ: aksiyon butonları
 	var buttons := VBoxContainer.new()
@@ -85,6 +105,32 @@ func _ready() -> void:
 	hint_label.add_theme_font_size_override("font_size", 24)
 	margin.add_child(hint_label)
 
+	# Lisans paneli (CC-BY atıfları oyunda gösterilmeli)
+	credits_panel = PanelContainer.new()
+	credits_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
+	credits_panel.offset_left = 80
+	credits_panel.offset_right = -80
+	credits_panel.offset_top = 60
+	credits_panel.offset_bottom = -60
+	var bg := StyleBoxFlat.new()
+	bg.bg_color = Color(0.05, 0.05, 0.06, 0.92)
+	bg.set_corner_radius_all(16)
+	bg.set_content_margin_all(24)
+	credits_panel.add_theme_stylebox_override("panel", bg)
+	credits_panel.visible = false
+	root.add_child(credits_panel)
+	var text := RichTextLabel.new()
+	text.bbcode_enabled = false
+	text.add_theme_font_size_override("normal_font_size", 18)
+	text.text = _credits_text()
+	text.gui_input.connect(func(e: InputEvent) -> void:
+		if e is InputEventScreenTouch and e.pressed and e.double_tap:
+			credits_panel.visible = false)
+	credits_panel.add_child(text)
+	var close := _button(credits_panel, "KAPAT", func() -> void: credits_panel.visible = false)
+	close.size_flags_horizontal = Control.SIZE_SHRINK_END
+	close.size_flags_vertical = Control.SIZE_SHRINK_END
+
 
 func _button(parent: Control, text: String, cb: Callable) -> Button:
 	var b := Button.new()
@@ -92,6 +138,7 @@ func _button(parent: Control, text: String, cb: Callable) -> Button:
 	b.custom_minimum_size = Vector2(220, 72)
 	b.focus_mode = Control.FOCUS_NONE
 	b.pressed.connect(cb)
+	b.add_to_group("hud_button")
 	parent.add_child(b)
 	return b
 
@@ -100,6 +147,33 @@ func set_stats(speed_kmh: float, destroyed: int, total: int) -> void:
 	speed_label.text = "%d km/sa" % roundi(speed_kmh)
 	var pct := 0.0 if total == 0 else 100.0 * destroyed / total
 	destroy_label.text = "Yıkım: %%%d  (%d/%d)" % [roundi(pct), destroyed, total]
+
+
+func set_fps(fps: int, extra: String) -> void:
+	fps_label.text = "%d FPS  %s" % [fps, extra]
+
+
+func set_quality_name(n: String) -> void:
+	quality_button.text = "GRAFİK: " + n
+
+
+func is_over_ui(pos: Vector2) -> bool:
+	if credits_panel.visible:
+		return true
+	for b in get_tree().get_nodes_in_group("hud_button"):
+		if (b as Control).get_global_rect().has_point(pos):
+			return true
+	return false
+
+
+func _credits_text() -> String:
+	var out := "KAYA YUVARLA — Lisanslar\n\n"
+	for path in ["res://assets/models/CREDITS_MODELS.md", "res://assets/sounds/CREDITS_SOUNDS.md"]:
+		var f := FileAccess.open(path, FileAccess.READ)
+		if f:
+			out += f.get_as_text().replace("# ", "").replace("**", "").replace("`", "") + "\n"
+	out += "Dokular ve gökyüzü: Poly Haven (CC0).\nMotor: Godot Engine (MIT), Jolt Physics (MIT).\n"
+	return out
 
 
 func set_aiming(aiming: bool) -> void:

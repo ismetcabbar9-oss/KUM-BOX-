@@ -14,6 +14,8 @@ var _look := Vector3.ZERO
 
 func _ready() -> void:
 	Fx.shake_requested.connect(func(a: float) -> void: _shake = maxf(_shake, a))
+	# Kamera _process'te interpolasyonlu hedefi izler; kendi interpolasyonu gereksiz
+	physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
 	fov = 62.0
 	near = 0.2
 	far = 1500.0
@@ -39,7 +41,7 @@ func _process(delta: float) -> void:
 	if target == null or not is_instance_valid(target):
 		return
 	var real_dt := delta / maxf(Engine.time_scale, 0.01)
-	var tpos := target.global_position
+	var tpos := target.get_global_transform_interpolated().origin
 	var rb := target as RigidBody3D
 	# Yön: kayanın yatay hızına göre yumuşak dön
 	if rb and not rb.freeze:
