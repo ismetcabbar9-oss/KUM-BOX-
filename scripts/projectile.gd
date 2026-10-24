@@ -16,14 +16,11 @@ const AMMO := {
 	"saw": {"name": "DÖNEN TESTERE", "density": 7850.0},
 	"steel": {"name": "ÇELİK GÜLLE", "density": 7850.0},
 	"bomb": {"name": "PATLAYICI VARİL", "density": 900.0},
-	"chain": {"name": "ZİNCİRLİ GÜLLE", "density": 7850.0},
 	"multisaw": {"name": "ÜÇLÜ TESTERE", "density": 7850.0},
 	"sticky": {"name": "YAPIŞKAN BOMBA", "density": 1400.0},
 	"fire": {"name": "ATEŞ GÜLLESİ", "density": 900.0},
 }
-const ORDER := ["granite", "basalt", "mossy", "sandstone", "river", "saw", "steel", "bomb", "chain", "multisaw", "sticky", "fire"]
-## Zincirli gülle: iki gülle arası zincir boyu (yarıçap katı)
-const CHAIN_LEN := 7.0
+const ORDER := ["granite", "basalt", "mossy", "sandstone", "river", "saw", "steel", "bomb", "multisaw", "sticky", "fire"]
 const STICKY_FUSE := 1.8
 
 static var _hull_cache := {}
@@ -47,8 +44,6 @@ var _age := 0.0
 ## Serbest uçuş algılama (ayrılan mermiler için): yalnız yerçekimiyle hızlanan kare sayısı
 var _free_frames := 0
 var _deployed := false
-var _partner: Projectile
-var _chain: MeshInstance3D
 var _stuck := false
 var _fuse := 0.0
 var _beep_t := 0.0
@@ -56,6 +51,8 @@ var _glow: StandardMaterial3D
 var _in_water := false
 var _fire_fx: GPUParticles3D
 var _ignite_cd := 0.0
+var _fire_spots := 0
+var _fire_light: OmniLight3D
 
 
 ## r: yarıçap (m). rolling: rampada yuvarlanacaksa küre çarpışma kullanılır.
@@ -92,10 +89,6 @@ func setup(ammo_id: String, r: float, rolling: bool) -> void:
 				pm.bounce = 0.15
 			"bomb":
 				_build_bomb(r, density)
-			"chain":
-				radius = r * 0.8
-				_build_steel(radius, density)
-				pm.bounce = 0.15
 			"multisaw":
 				radius = r * 0.65
 				_build_saw(radius, density)
@@ -275,7 +268,7 @@ func _build_fire(r: float, density: float) -> void:
 	mass = 4.0 / 3.0 * PI * pow(r, 3) * density
 
 
-## Uçarken alev izi (yangın sisteminin alev görünümünü kullanır)
+## Uçarken alev + duman izi ve turuncu ışık (yangın sisteminin görünümünü kullanır)
 func _start_fire_trail() -> void:
 	if FireSystem.inst == null or _fire_fx:
 		return
@@ -283,12 +276,29 @@ func _start_fire_trail() -> void:
 	_fire_fx = GPUParticles3D.new()
 	_fire_fx.process_material = src.process_material
 	_fire_fx.draw_pass_1 = src.draw_pass_1
-	_fire_fx.amount = 40
-	_fire_fx.lifetime = 0.8
+	_fire_fx.amount = 70
+	_fire_fx.lifetime = 1.0
 	_fire_fx.local_coords = false
-	_fire_fx.scale = Vector3.ONE * maxf(radius, 0.6)
+	_fire_fx.visibility_aabb = AABB(Vector3(-40, -40, -40), Vector3(80, 80, 80))
+	_fire_fx.scale = Vector3.ONE * maxf(radius * 1.3, 0.8)
 	add_child(_fire_fx)
 	_fire_fx.emitting = true
+	var smoke_src: GPUParticles3D = FireSystem.inst._smoke[0]
+	var smoke := GPUParticles3D.new()
+	smoke.process_material = smoke_src.process_material
+	smoke.draw_pass_1 = smoke_src.draw_pass_1
+	smoke.amount = 30
+	smoke.lifetime = 2.5
+	smoke.local_coords = false
+	smoke.visibility_aabb = AABB(Vector3(-80, -80, -80), Vector3(160, 160, 160))
+	smoke.scale = Vector3.ONE * maxf(radius, 0.6)
+	add_child(smoke)
+	smoke.emitting = true
+	_fire_light = OmniLight3D.new()
+	_fire_light.light_color = Color(1.0, 0.55, 0.2)
+	_fire_light.light_energy = 3.0
+	_fire_light.omni_range = 10.0 + radius * 4.0
+	add_child(_fire_light)
 
 
 func display_name() -> String:
@@ -332,20 +342,20 @@ func _physics_process(delta: float) -> void:
 	_touching = get_contact_count() > 0
 	if ammo == "fire" and _touching and _age > 0.3:
 		_fire_impact()
+	if _fire_light:
+		_fire_light.light_energy = 2.5 + randf() * 1.5
 	var v := linear_velocity
 	var spd := v.length()
 	if ammo == "sticky":
 		_sticky_update(delta)
 		if exploded:
 			return
-	elif not _deployed and (ammo == "chain" or ammo == "multisaw"):
+	elif not _deployed and ammo == "multisaw":
 		# Serbest uçuşa geçince (yalnız yerçekimi) ayrıl
 		var acc := (v - _prev_v) / maxf(delta, 0.001)
 		_free_frames = _free_frames + 1 if not _touching and _age > 0.1 and spd > 6.0 and (acc - get_gravity()).length() < 3.0 else 0
 		if _free_frames >= 4:
 			_deploy()
-	if _partner:
-		_rope(delta)
 	if ammo != "saw" and ammo != "multisaw":
 		# Yuvarlanma direnci: hızlıyken neredeyse yok, yavaşlayınca durur
 		var k := clampf(spd / 8.0, 0.0, 1.0)
@@ -379,7 +389,7 @@ func _physics_process(delta: float) -> void:
 			return
 		if ammo == "fire":
 			_fire_impact()
-		var kind := "metal" if ammo in ["saw", "steel", "chain", "multisaw", "sticky"] else "rock"
+		var kind := "metal" if ammo in ["saw", "steel", "multisaw", "sticky"] else "rock"
 		Sfx.impact(kind, p, dv * 3.0)
 		Fx.dust(p, clampf(dv * radius * 0.5, 0.5, 2.5))
 		Fx.shake(clampf(dv * radius * 0.12 * sqrt(mass / 20000.0), 0.0, 1.0))
@@ -458,12 +468,33 @@ func _predictive_strike(delta: float) -> void:
 		Fx.shake(clampf(used / 2.0e6, 0.2, 1.0))
 
 
-## Ateş güllesi çarptı: çevresindeki ahşabı tutuştur (yuvarlanırken de, aralıklarla)
+## Ateş güllesi çarptı: çevresindeki ahşabı tutuşturur, düştüğü yerde yer yangını çıkar.
+## İlk sert düşüşte alevli zift etrafa sıçrar (ileriye doğru birkaç küçük yangın daha).
+## Yuvarlanırken aralıklarla arkasında yanan iz bırakır. Fırlatıcıya değmesi sayılmaz.
 func _fire_impact() -> void:
 	if _ignite_cd > 0.0 or FireSystem.inst == null or _age > 20.0:
 		return
+	var on_launcher := false
+	for b in get_colliding_bodies():
+		if _is_launcher_part(b):
+			on_launcher = true
+	if on_launcher:
+		return
 	_ignite_cd = 0.5
-	FireSystem.inst.ignite_area(global_position, 6.0 + radius * 2.0)
+	var fs := FireSystem.inst
+	fs.ignite_area(global_position, 6.0 + radius * 2.0)
+	if _fire_spots >= 8:
+		return
+	_fire_spots += 1
+	fs.ground_fire(global_position, 16.0)
+	if _fire_spots == 1:
+		var v := linear_velocity
+		var fwd := Vector3(v.x, 0, v.z).normalized() if Vector2(v.x, v.z).length() > 1.0 else Vector3.FORWARD
+		for k in 3:
+			var off := fwd.rotated(Vector3.UP, randf_range(-0.9, 0.9)) * randf_range(3.0, 7.0)
+			fs.ground_fire(global_position + off, 12.0)
+		Fx.dust(global_position, clampf(radius * 1.5, 0.8, 2.5))
+		Sfx.play("ignite", global_position, 8.0)
 
 
 func _thaw_nearby() -> void:
@@ -518,7 +549,6 @@ func explode() -> void:
 
 # --- Ayrılan / özel mermiler --------------------------------------------------
 
-## Zincirli gülle: ikinci gülle yana çıkar, ikisi zincirle dönerek uçar.
 ## Üçlü testere: iki kopya ±8° açıyla ayrılır.
 func _deploy() -> void:
 	_deployed = true
@@ -526,90 +556,23 @@ func _deploy() -> void:
 	var side := Vector3.UP.cross(v).normalized()
 	if side.length() < 0.5:
 		side = Vector3.RIGHT
-	if ammo == "chain":
-		var l := CHAIN_LEN * radius
-		var other := _spawn_copy("chain", global_position + side * l * 0.95)
-		# Ortak merkez etrafında dikey eksende dönme: ω × (p - merkez)
-		var w := Vector3.UP * 5.0
-		linear_velocity = v + w.cross(-side * l * 0.5)
-		other.launch(v + w.cross(side * l * 0.5))
-		other._deployed = true
-		_partner = other
-		other._partner = self
-		_chain = MeshInstance3D.new()
-		var cm := CylinderMesh.new()
-		cm.top_radius = radius * 0.12
-		cm.bottom_radius = radius * 0.12
-		cm.height = 1.0
-		cm.radial_segments = 6
-		_chain.mesh = cm
-		_chain.material_override = WorldBuilder.pbr("metal_plate", 1.0, Color(0.25, 0.25, 0.27), false)
-		_chain.top_level = true
-		add_child(_chain)
-		Sfx.play("chain", global_position, 2.0)
-	else:
-		for sgn in [-1.0, 1.0]:
-			var c := _spawn_copy("multisaw", global_position + side * sgn * radius * 2.6)
-			c._deployed = true
-			c.launch(v.rotated(Vector3.UP, deg_to_rad(8.0) * sgn))
-		Sfx.impact("metal", global_position, 10.0)
+	for sgn in [-1.0, 1.0]:
+		var c := _spawn_copy("multisaw", global_position + side * sgn * radius * 2.6)
+		c._deployed = true
+		c.launch(v.rotated(Vector3.UP, deg_to_rad(8.0) * sgn))
+	Sfx.impact("metal", global_position, 10.0)
 
 
 func _spawn_copy(id: String, at: Vector3) -> Projectile:
 	var c := Projectile.new()
 	# setup yarıçapı ölçekler; aynı boyut için geri böl
-	c.setup(id, radius / (0.8 if id == "chain" else 0.65), false)
+	c.setup(id, radius / 0.65, false)
 	get_parent().add_child(c)
 	c.global_transform = Transform3D(global_transform.basis, at)
 	c.reset_physics_interpolation()
 	if get_parent().has_method("register_projectile"):
 		get_parent().register_projectile(c)
 	return c
-
-
-## Esnemeyen zincir: boy aşılınca iki gülle arasındaki uzaklaşma hızı sönümlenir
-func _rope(_delta: float) -> void:
-	if not is_instance_valid(_partner) or _partner.exploded:
-		_partner = null
-		if _chain:
-			_chain.queue_free()
-			_chain = null
-		return
-	if _chain == null:
-		return  # kısıtı yalnız zinciri taşıyan taraf uygular
-	var d := _partner.global_position - global_position
-	var dist := d.length()
-	var l := CHAIN_LEN * radius
-	if dist <= l or dist < 0.01:
-		return
-	var n := d / dist
-	var vr := (_partner.linear_velocity - linear_velocity).dot(n)
-	var m1 := mass
-	var m2 := _partner.mass
-	var j := maxf(vr, 0.0) + (dist - l) * 2.0  # hız + küçük konum düzeltmesi
-	linear_velocity += n * j * m2 / (m1 + m2)
-	_partner.linear_velocity -= n * j * m1 / (m1 + m2)
-	if dist > l * 3.0:
-		# Biri bir yere sıkıştı: zincir kopar
-		Sfx.play("chain", global_position, 4.0, 1.3)
-		_partner._partner = null
-		_partner = null
-		_chain.queue_free()
-		_chain = null
-
-
-func _process(_delta: float) -> void:
-	if _chain == null or not is_instance_valid(_partner):
-		return
-	var a := get_global_transform_interpolated().origin
-	var b := _partner.get_global_transform_interpolated().origin
-	var d := b - a
-	var len := d.length()
-	if len < 0.1:
-		return
-	var y := d / len
-	var x := y.cross(Vector3.FORWARD if absf(y.z) < 0.9 else Vector3.RIGHT).normalized()
-	_chain.global_transform = Transform3D(Basis(x, y, x.cross(y)).scaled_local(Vector3(1, len, 1)), a + d * 0.5)
 
 
 ## Yapışkan bomba: ilk temasta yapışır (fırlatıcının kendisi hariç), bip sesleri hızlanır,

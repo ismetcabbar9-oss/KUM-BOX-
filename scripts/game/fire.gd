@@ -2,6 +2,8 @@ class_name FireSystem
 extends Node
 ## Yangın: ahşap bloklar (çatı kalasları, ahır, asma köprü) tutuşur, komşu ahşaba sıçrar,
 ## yanıp kömürleşince kopup düşer. Taş yanmaz.
+## Yer yangını: ateş güllesinin düştüğü yerde (çimen, taş, moloz) bir süre yanan alev
+## öbeği; yakınındaki ahşabı tutuşturur, içine giren figürü yakar, zemine is izi bırakır.
 ## Görseller havuzlu: en çok EMITTERS alev/duman yayıcı, LIGHTS ışık + ateş sesi (mobil).
 
 static var inst: FireSystem
@@ -10,6 +12,8 @@ const EMITTERS := 28
 const LIGHTS := 3
 const TICK := 0.5
 const SPREAD_P := 0.22
+const GROUND_MAX := 12
+const GROUND_R := 2.6
 
 var castle: Castle
 var _burning := {}  # Destructible -> {"t", "life", "fx": indeks}
@@ -22,6 +26,9 @@ var _sounds: Array[AudioStreamPlayer3D] = []
 var _tick := 0.0
 var _char: StandardMaterial3D
 var _alarm_cd := 0.0
+var _ground: Array = []  # [{"node", "t", "life", "fx"}]
+var _scorch: Array[Decal] = []
+var _scorch_next := 0
 
 
 func _init() -> void:
@@ -57,6 +64,7 @@ func _ready() -> void:
 		a.volume_db = -80.0
 		add_child(a)
 		_sounds.append(a)
+	_setup_scorch()
 	_char = StandardMaterial3D.new()
 	_char.albedo_color = Color(0.09, 0.07, 0.06)
 	_char.roughness = 1.0
@@ -113,6 +121,107 @@ func _emitter(tex: Texture2D, flame: bool) -> GPUParticles3D:
 	return p
 
 
+## İs izi: koyu, kenarı dağınık yanık lekesi
+func _setup_scorch() -> void:
+	var img := Image.create(64, 64, false, Image.FORMAT_RGBA8)
+	var noise := FastNoiseLite.new()
+	noise.frequency = 0.12
+	for y in 64:
+		for x in 64:
+			var d := Vector2(x - 31.5, y - 31.5).length() / 32.0
+			var n := noise.get_noise_2d(x, y) * 0.5 + 0.5
+			var a := clampf((1.0 - d) * 1.8 - 0.2 + (n - 0.5) * 0.8, 0.0, 1.0)
+			img.set_pixel(x, y, Color(0.05, 0.04, 0.035, a * 0.9))
+	var tex := ImageTexture.create_from_image(img)
+	for i in GROUND_MAX:
+		var dc := Decal.new()
+		dc.texture_albedo = tex
+		dc.visible = false
+		dc.cull_mask = 1
+		add_child(dc)
+		_scorch.append(dc)
+
+
+## Yer yangını başlat (zemine oturtulur). Havuz doluysa en eskisi söner.
+func ground_fire(point: Vector3, life := 14.0) -> void:
+	var space := get_viewport().get_world_3d().direct_space_state
+	var rq := PhysicsRayQueryParameters3D.create(point + Vector3.UP * 3.0, point + Vector3.DOWN * 30.0, 1 | 2)
+	var hit := space.intersect_ray(rq)
+	if not hit.is_empty():
+		point = hit["position"]
+	for g: Dictionary in _ground:
+		if (g["node"] as Node3D).global_position.distance_to(point) < GROUND_R * 0.8:
+			g["life"] = maxf(g["life"], g["t"] + life)  # aynı yere tekrar: daha uzun yanar
+			return
+	if _ground.size() >= GROUND_MAX:
+		_end_ground(_ground[0])
+	var node := Node3D.new()
+	add_child(node)
+	node.global_position = point
+	var entry := {"node": node, "t": 0.0, "life": life * randf_range(0.85, 1.15), "fx": -1}
+	if _free_fx.is_empty():
+		# Yayıcı kalmadı: en eski yer yangınının yayıcısını al
+		for g: Dictionary in _ground:
+			if g["fx"] >= 0:
+				entry["fx"] = g["fx"]
+				g["fx"] = -1
+				break
+	else:
+		entry["fx"] = _free_fx.pop_back()
+	if entry["fx"] >= 0:
+		var i: int = entry["fx"]
+		_fx_owner[i] = node
+		_fx[i].emitting = true
+		_smoke[i].emitting = true
+	_ground.append(entry)
+	var dc := _scorch[_scorch_next]
+	_scorch_next = (_scorch_next + 1) % _scorch.size()
+	var sz := GROUND_R * 2.0 * randf_range(1.0, 1.4)
+	dc.size = Vector3(sz, 3.0, sz)
+	dc.global_position = point
+	dc.rotation.y = randf() * TAU
+	dc.visible = true
+	ignite_area(point, GROUND_R + 2.0)
+	Sfx.play("ignite", point, 6.0)
+
+
+func _end_ground(g: Dictionary) -> void:
+	_ground.erase(g)
+	var node: Node3D = g["node"]
+	var i: int = g["fx"]
+	if i >= 0:
+		_fx[i].emitting = false
+		get_tree().create_timer(3.0).timeout.connect(func() -> void:
+			if _fx_owner[i] == node:
+				_release_fx(i)
+			node.queue_free())
+	else:
+		node.queue_free()
+
+
+func _ground_tick() -> void:
+	if _ground.is_empty():
+		return
+	var space := get_viewport().get_world_3d().direct_space_state
+	var q := PhysicsShapeQueryParameters3D.new()
+	var sph := SphereShape3D.new()
+	sph.radius = GROUND_R
+	q.shape = sph
+	q.collision_mask = 16 | 2
+	for g: Dictionary in _ground.duplicate():
+		g["t"] += TICK
+		var p: Vector3 = (g["node"] as Node3D).global_position
+		q.transform = Transform3D(Basis.IDENTITY, p + Vector3.UP)
+		for hit in space.intersect_shape(q, 16):
+			var c: Object = hit["collider"]
+			if c is Soldier and (c as Soldier).alive:
+				(c as Soldier).die(Vector3(randf_range(-1, 1), 0, randf_range(-1, 1)))
+			elif c is Destructible and (c as Destructible).material_kind == "wood" and randf() < 0.35:
+				ignite(c as Destructible)
+		if g["t"] >= g["life"]:
+			_end_ground(g)
+
+
 func is_burning(d: Destructible) -> bool:
 	return _burning.has(d)
 
@@ -167,6 +276,15 @@ func _process(delta: float) -> void:
 		_smoke[i].global_position = d.global_position + Vector3.UP * 1.0
 	# Işık ve ses: ilk birkaç yanan bölgede
 	var spots: Array[Vector3] = []
+	for g: Dictionary in _ground:
+		var gp: Vector3 = (g["node"] as Node3D).global_position
+		var close := false
+		for s in spots:
+			if s.distance_to(gp) < 14.0:
+				close = true
+				break
+		if not close and spots.size() < LIGHTS:
+			spots.append(gp)
 	for d in _burning:
 		if not is_instance_valid(d):
 			continue
@@ -197,6 +315,7 @@ func _process(delta: float) -> void:
 	if _tick > 0.0:
 		return
 	_tick = TICK
+	_ground_tick()
 	for d in _burning.keys():
 		if not is_instance_valid(d):
 			_drop(d)

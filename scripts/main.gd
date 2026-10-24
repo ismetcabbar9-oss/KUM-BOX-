@@ -568,6 +568,10 @@ func _autotest() -> void:
 			print("köprü açı=%.0f° uç=%s" % [rad_to_deg(castle.bridge._angle), bb.to_global(Vector3(0, 0, 8)).round()])
 		get_tree().quit()
 		return
+	if "--shots5" in args:
+		await _shots_fireball()
+		get_tree().quit()
+		return
 	if "--shots4" in args:
 		await _shots_fire()
 		get_tree().quit()
@@ -747,6 +751,26 @@ func _shots2() -> void:
 		for f in 10:
 			await get_tree().physics_frame
 	await _snap_views([[Vector3(38, 8, c - 86), Vector3(35, 6, c - 72)]], "s2_cracks")
+
+
+## Ateş güllesi: havada alevli uçuş, düştüğü çimende yer yangını
+func _shots_fireball() -> void:
+	var p := Projectile.new()
+	p.setup("fire", 1.5, false)
+	add_child(p)
+	register_projectile(p)
+	p.global_position = Vector3(10, 25, 130)
+	p.launch(Vector3(0, 8, 22))
+	for k in 72:
+		await get_tree().physics_frame
+	await _snap_views([[Vector3(42, 26, 150), p.global_position]], "shot_fb_air")
+	for k in 180:
+		await get_tree().physics_frame
+	var land := p.global_position if is_instance_valid(p) else Vector3(10, 0, 200)
+	await _snap_views([[land + Vector3(18, 9, -16), land]], "shot_fb_land")
+	for k in 360:
+		await get_tree().physics_frame
+	await _snap_views([[land + Vector3(18, 9, -16), land]], "shot_fb_late")
 
 
 ## Yangın: kışla çatısı ve ahır tutuşturulur, yayılma ve çöküş görüntülenir

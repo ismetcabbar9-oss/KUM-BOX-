@@ -1,4 +1,4 @@
-# Kaya Yuvarla — prototip v1.0
+# Kaya Yuvarla — prototip v1.1
 
 Geliştirme planı: [PLAN.md](PLAN.md) (kademeli aşamalar).
 
@@ -31,9 +31,16 @@ Sapan ve topta sarı noktalar tahmini yörüngeyi gösterir.
 
 **Mermiler:** Granit, Bazalt, Yosunlu kaya, Kumtaşı, Dere taşı (gerçek kaya taramaları, farklı yoğunluklar), **Dönen testere** (yüksek devirle döner, yere değince ileri atılır, binaları keserek az enerji kaybeder), **Çelik gülle** (7.85 t/m³), **Patlayıcı varil** (çarpınca patlar: yapıya hasar + çevreye itki).
 
-**Yeni mermiler (v0.6):** **Zincirli gülle** (havada ikiye ayrılır, aradaki esnemez zincirle dönerek uçar), **Üçlü testere** (havada ±8° açıyla üç diske ayrılır), **Yapışkan bomba** (değdiği yere yapışır, hızlanan bip sesleriyle 1,8 sn sonra patlar; hareketli gövdeye iğnelenir).
+**Mermiler:** **Üçlü testere** (havada ±8° açıyla üç diske ayrılır), **Yapışkan bomba** (değdiği yere yapışır, hızlanan bip sesleriyle 1,8 sn sonra patlar; hareketli gövdeye iğnelenir).
 
 **Engeller:** dönen çelik pervane (kinematik), sallanan yıkım gülle sarkacı (gerçek menteşe), konteyner yığınları, beton bariyerler, tuğla duvar, variller, sandıklar, taşlar.
+
+## v1.1
+- Zincirli gülle ve SPİRAL rampa kaldırıldı (rampa türleri: KLASİK, KAYAK ATLAMA, S-KIVRIM, TEPELİ).
+- ATEŞ GÜLLESİ yenilendi: havada büyük alev + duman izi ve turuncu ışıkla uçar. Düştüğü yerde
+  (çimen, taş, moloz fark etmez) yer yangını çıkar, ilk düşüşte alevli zift ileriye sıçrar
+  (3 küçük yangın daha), yuvarlanırken arkasında yanan iz bırakır. Yer yangını ~15 sn yanar,
+  zemine is izi bırakır, yakındaki ahşabı tutuşturur, içine giren figürü yakar.
 
 ## v1.0 (Yaşayan Kale — Aşama D: oynanış)
 - Mancınık nişan yardımı: atış yayı (noktalar) + sarı iniş halkası. Kalibrasyon tablosundan
@@ -112,7 +119,7 @@ Sapan ve topta sarı noktalar tahmini yörüngeyi gösterir.
 
 ## v0.6'da değişenler (Aşama 4)
 
-- **5 rampa türü** (AYAR butonu): KLASİK, KAYAK ATLAMA (kaya havalanır), S-KIVRIM (yatışlı virajlar), SPİRAL (72 m'den 1,25 tur), TEPELİ. Rampalar yol boyunca süpürülerek üretiliyor (`WorldBuilder.build_path_ramp`): yatış eğriliğe göre, duvarlar düşük sürtünmeli, ayaklar alttan geçen rampa kısmına basmıyor.
+- **4 rampa türü** (AYAR butonu): KLASİK, KAYAK ATLAMA (kaya havalanır), S-KIVRIM (yatışlı virajlar), TEPELİ. Rampalar yol boyunca süpürülerek üretiliyor (`WorldBuilder.build_path_ramp`): yatış eğriliğe göre, duvarlar düşük sürtünmeli, ayaklar alttan geçen rampa kısmına basmıyor.
 - **Roket kızağı** (x=22 şeridi) ve **sarkaçlı yıkım vinci** (Sovyet apartmanın yanında).
 - **Zincirli gülle, üçlü testere, yapışkan bomba.**
 - **Yeni hedefler:** beton köprü (3 ayak, tabliye ayak koparsa çöker), elektrik hattı (ahşap direkler, kablolar direk kırılınca kopar).
@@ -210,7 +217,7 @@ python3 tools/fetch_textures.py
 godot --headless --path . --fixed-fps 60 -- --autotest --launcher=1 --ammo=saw
 ```
 `--map=castle` kale haritası, `--siege=N` N gerçek atış, `--siege-synth=N` N yapay darbe (`--energy=7e6` darbe enerjisi, J), `--cw=TON` kale mancınığı karşı ağırlığı.
-`--launcher`: 0 rampa, 1 mancınık, 2 sapan, 3 top, 4 roket kızağı, 5 yıkım vinci (`--cut=SN` SN saniye sonra zinciri keser). `--ramp=0..4` rampa türü. `--ammo`: granite, basalt, mossy, sandstone, river, saw, steel, bomb, chain, multisaw, sticky. `--trace` ilk 2,5 sn'yi adım adım yazar.
+`--launcher`: 0 rampa, 1 mancınık, 2 sapan, 3 top, 4 roket kızağı, 5 yıkım vinci (`--cut=SN` SN saniye sonra zinciri keser). `--ramp=0..3` rampa türü. `--ammo`: granite, basalt, mossy, sandstone, river, saw, steel, bomb, multisaw, sticky, fire. `--shots5` ateş güllesi görüntüleri. `--trace` ilk 2,5 sn'yi adım adım yazar.
 `-- --autotest --shots` ekran görüntüsü alır (görüntülü ortam gerekir).
 
 ## Yol haritası

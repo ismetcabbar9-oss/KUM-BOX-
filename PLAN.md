@@ -26,7 +26,7 @@ otomatik test + ekran görüntüsü + commit + ZIP.
 - [x] Köprü, elektrik direkleri (Aşama 4'te eklendi).
 
 ## Aşama 4 — Rampa ve fırlatıcı çeşitleri  ✅ (v0.6)
-- [x] Rampa türleri (AYAR butonu): klasik, kayak atlama, S-kıvrım (yatışlı), spiral, tepeli (kicker'lar).
+- [x] Rampa türleri (AYAR butonu): klasik, kayak atlama, S-kıvrım (yatışlı), tepeli (spiral v1.1'de kaldırıldı) (kicker'lar).
 - [x] Roket kızağı: U-kanalda kızak, itki ayarı, tampona çarpınca mermi kalkış dudağından uçar.
 - [x] Sarkaçlı yıkım vinci: zincirli gülle geri çekilip savrulur, sallanırken zincir kesilebilir.
 - [x] Yeni mermi: zincirli gülle, üçlü testere, yapışkan bomba.

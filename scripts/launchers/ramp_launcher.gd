@@ -4,11 +4,10 @@ extends Launcher
 ##   KLASİK       : 55 m, dikten yataya yumuşak iniş
 ##   KAYAK ATLAMA : 62 m dik iniş, sonunda 10° yukarı kalkış dudağı: kaya havalanır
 ##   S-KIVRIM     : yatışlı S virajları
-##   SPİRAL       : 72 m'den 1.25 tur sarmal iniş, ardından düz çıkış
 ##   TEPELİ       : dalgalı iniş: tepelerde kaya havalanır
 ## Kaya rampanın başındaki düz platformda bekler; yana sürüklenerek hizalanır.
 
-const TYPES := ["KLASİK", "KAYAK ATLAMA", "S-KIVRIM", "SPİRAL", "TEPELİ"]
+const TYPES := ["KLASİK", "KAYAK ATLAMA", "S-KIVRIM", "TEPELİ"]
 const WIDTH := 14.0
 const PLATFORM := 14.0
 
@@ -107,28 +106,7 @@ func _path(kind: int) -> Array:
 				var x := 24.0 * sin(TAU * t) * (1.0 - t)
 				pts.append(Vector3(x, 55.0 * pow(1.0 - t, 2.0) + lift, t * 189.0))
 			wall = 3.2
-		3:  # SPİRAL: merkez (R, ·, cz); θ artarak -π/2'de (0, ·, cz) noktasına +Z yönünde varır
-			var r := 24.0
-			var cz := 70.0
-			var turns := 1.25
-			var th0 := -PI * 0.5 - turns * TAU
-			var start := Vector3(r + r * sin(th0), 72.0, cz + r * cos(th0))
-			var t0 := Vector3(r * cos(th0), 0, -r * sin(th0)).normalized()
-			for i in 9:
-				pts.append(start - t0 * (PLATFORM * (8 - i) / 8.0) + Vector3.UP * lift)
-			var steps := 160
-			for i in range(1, steps + 1):
-				var u := float(i) / steps
-				var th := lerpf(th0, -PI * 0.5, u)
-				pts.append(Vector3(r + r * sin(th), lerpf(72.0, 20.0, u) + lift, cz + r * cos(th)))
-			var keys := [[cz, 20.0, -52.0 / (r * turns * TAU)], [189.0, 0.0, 0.0]]
-			var z := cz + 1.6
-			while z <= 189.0:
-				pts.append(Vector3(0, _hermite(keys, z) + lift, z))
-				z += 1.6
-			wall = 5.0
-			max_bank = 0.68
-		4:  # TEPELİ
+		3:  # TEPELİ
 			var z := 0.0
 			while z <= 189.0:
 				var base := WorldBuilder.ramp_height(z, 55.0, PLATFORM, 150.0)
