@@ -1,4 +1,4 @@
-# Kaya Yuvarla — prototip v0.7
+# Kaya Yuvarla — prototip v0.7.1
 
 Geliştirme planı: [PLAN.md](PLAN.md) (kademeli aşamalar).
 
@@ -34,6 +34,10 @@ Sapan ve topta sarı noktalar tahmini yörüngeyi gösterir.
 **Yeni mermiler (v0.6):** **Zincirli gülle** (havada ikiye ayrılır, aradaki esnemez zincirle dönerek uçar), **Üçlü testere** (havada ±8° açıyla üç diske ayrılır), **Yapışkan bomba** (değdiği yere yapışır, hızlanan bip sesleriyle 1,8 sn sonra patlar; hareketli gövdeye iğnelenir).
 
 **Engeller:** dönen çelik pervane (kinematik), sallanan yıkım gülle sarkacı (gerçek menteşe), konteyner yığınları, beton bariyerler, tuğla duvar, variller, sandıklar, taşlar.
+
+## v0.7.1
+
+- Test alanı haritası (binalar, araçlar, engeller, yıkım vinci) kaldırıldı. Oyunda yalnız kale haritası var.
 
 ## v0.7'de değişenler
 

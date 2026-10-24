@@ -212,6 +212,7 @@ func set_fps(fps: int, extra: String) -> void:
 
 func set_map_name(n: String) -> void:
 	map_button.text = n
+	map_button.disabled = true  # tek harita
 
 
 func set_quality_name(n: String) -> void:

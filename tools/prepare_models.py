@@ -25,32 +25,20 @@ UA = {"User-Agent": "Mozilla/5.0"}
 
 # ad: (sketchfab uid, ana doku boyutu)
 SKETCHFAB = {
-    "soviet": ("05229ac1d1f94e6c8cacaad91110c602", 2048),
-    "tower": ("694adf5094fa41f99a245ed822293f47", 2048),
-    "oldbuilding": ("1f304c6e56324c19955a18aa79b15b9f", 1024),
-    "factory": ("4e033f90eaaa4e68931af60f0309f537", 2048),
-    "booth": ("9d9a74a55f384b6cb80f7453e951f6c8", 1024),
     "rock_hero": ("b66d5b63deb447299ca3effa904bc789", 1024),
     "rock_boulder2": ("70fd18ec2a4a4d378d9d8c1ba878dcbc", 1024),
     "rock_medium": ("54cef4772d2a442680d5f18dcb2f93e7", 1024),
     "rocks4": ("a3db6dd1c31b4c63a8ce372d470bdf5d", 1024),
-    "jersey": ("b52246c9611a42a99a03b425535a0237", 1024),
     "smooth_rocks": ("4503b42e55fd4fd4b42f0f18abc43298", 1024),
     "border_stone": ("ed49866dbdfd4b52aad3edaabc63c70f", 1024),
     "saw": ("98d471f4e3ec40ec97703867e04a0a61", 1024),
-    "container": ("979114d6e1754f5591735ef3e5e203d4", 1024),
-    "sedan": ("6a2169dafc254f399387a679305bb1bf", 1024),
-    "lada": ("08919ffc20a149e487165902114e1e91", 1024),
-    "van": ("07bc48134b364d4f8a43d288b3a0282d", 1024),
-    "truck": ("663a0953c038434a918cb85725c88ffa", 1024),
     "pine_a": ("fbd656918d5e4126b82c7b41432aff5f", 1024),
     "pine_b": ("dc3fbd9205cf4027a4455d1f415e0478", 1024),
-    "log_pile": ("3f4205a30a7d4adda50c775fb8cce06c", 1024),
     "caveman_a": ("3ba4da569fae4f2eb1a84988c90cc5ed", 1024),
     "caveman_b": ("83d99a21ce154571bdf6d4ecef2fe183", 1024),
     "soldier": ("271c26d2137a46f6911b09566b552d14", 512),
 }
-POLYHAVEN = {"barrel": "Barrel_01", "crate": "wooden_crate_02"}
+POLYHAVEN = {"barrel": "Barrel_01"}
 
 
 def get(url, headers=None):
