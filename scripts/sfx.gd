@@ -31,6 +31,12 @@ func _ready() -> void:
 		"rocket_ignite": _load_set("rocket_ignite_", 1),
 		"chain": _load_set("chain_", 2),
 		"beep": _load_set("beep_", 1),
+		"horn": _load_set("horn_", 2),
+		"scream": _load_set("scream_", 8),
+		"yell": _load_set("yell_", 6),
+		"arrow_whoosh": _load_set("arrow_whoosh_", 3),
+		"arrow_hit": _load_set("arrow_hit_", 3),
+		"anvil": _load_set("anvil_", 3),
 	}
 	# Tuğla ve taş da beton kayıtlarını kullanır (perde farkıyla)
 	_streams["brick"] = _streams["concrete"]

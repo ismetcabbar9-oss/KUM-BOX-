@@ -48,3 +48,15 @@ Tüm kayıtlar Freesound.org, **Creative Commons 0**. İşlenmiş hâlleri (kesm
 - [Slingshot 1.wav by olver](https://freesound.org/people/olver/sounds/513934/) — olver
 - [Slingshot 2.wav by olver](https://freesound.org/people/olver/sounds/513933/) — olver
 - [Slingshot sound by K27K_Mike](https://freesound.org/people/K27K_Mike/sounds/853649/) — K27K_Mike
+
+## OpenGameArt (CC0)
+
+Freesound bu geliştirme ortamından erişilemediği için kale kalabalığı sesleri OpenGameArt'tan alındı (hepsi CC0).
+
+- [Their Coming (generic horn sound)](https://opengameart.org/content/their-coming-generic-horn-sound) — StumpyStrust
+- [Crowd Shouting/Speaking Ambience](https://opengameart.org/content/crowd-shoutingspeaking-ambience) — StarNinjas
+- [grunts of male death and pain](https://opengameart.org/content/grunts-male-death-and-pain) — thebardofblasphemy
+- [Male Grunt/Yelling sounds](https://opengameart.org/content/male-gruntyelling-sounds) — HaelDB
+- [Swishes Sound Pack](https://opengameart.org/content/swishes-sound-pack) — artisticdude
+- [100 CC0 metal and wood SFX](https://opengameart.org/content/100-cc0-metal-and-wood-sfx) — rubberduck
+- [Hammer on Anvil](https://opengameart.org/content/hammer-on-anvil) — themightyglider

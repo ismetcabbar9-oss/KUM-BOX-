@@ -422,6 +422,8 @@ func explode() -> void:
 	var k := radius / (0.36 if ammo == "sticky" else 0.6)
 	var energy := 6.0e6 * pow(k, 3.0)
 	var blast_r := 9.0 * k
+	if Crowd.inst:
+		Crowd.inst.alarm(p, energy)
 	Building.strike(get_world_3d(), p, energy, Vector3.UP * 0.3, self)
 	for hit in _shape_query(blast_r, p, 2 | 4 | 8 | 16):
 		var b := hit["collider"] as RigidBody3D

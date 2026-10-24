@@ -38,6 +38,7 @@ var _destructibles: Array[Node] = []
 var _buildings: Array[Building] = []
 var crew: Crew
 var castle: Castle
+var crowd_node: Crowd
 var _soldiers: Array[Soldier] = []
 
 
@@ -60,6 +61,7 @@ func _ready() -> void:
 	camera = preload("res://scripts/game_camera.gd").new()
 	add_child(camera)
 	camera.current = true
+	crowd_node.camera = camera
 
 	hud = preload("res://scripts/hud.gd").new()
 	add_child(hud)
@@ -227,13 +229,11 @@ func _build_castle() -> void:
 	for p in castle.parts:
 		_buildings.append(p)
 	Projectile.water_zones = castle.world_water()
-	for spot in castle.soldier_spots:
-		var s := Soldier.new()
-		s.setup()
-		s.role = spot[2]
-		add_child(s)
-		s.global_transform = Transform3D(Basis(Vector3.UP, spot[1]), castle.to_global(spot[0]))
-		_soldiers.append(s)
+	crowd_node = Crowd.new()
+	crowd_node.name = "Halk"
+	add_child(crowd_node)
+	crowd_node.build(castle)
+	_soldiers = crowd_node.figures
 
 
 ## Çevre ağaçları: statik, gövde çarpışmalı, uzakta görünmez
@@ -337,6 +337,8 @@ func _reload() -> void:
 	hud.set_option(launcher.option_label())
 	camera.snap()
 	crew.attach(launcher)
+	# Okçular etkin fırlatıcıyı hedefler
+	crowd_node.target = launcher.global_position
 
 
 func _on_fire_pressed() -> void:
@@ -459,6 +461,10 @@ func _autotest() -> void:
 			print("köprü açı=%.0f° uç=%s" % [rad_to_deg(castle.bridge._angle), bb.to_global(Vector3(0, 0, 8)).round()])
 		get_tree().quit()
 		return
+	if "--shots3" in args:
+		await _shots_life()
+		get_tree().quit()
+		return
 	if "--shots2" in args:
 		await _shots2()
 		get_tree().quit()
@@ -513,6 +519,10 @@ func _autotest() -> void:
 					released += 1
 		var pos := current.global_position.round() if is_instance_valid(current) else Vector3.ZERO
 		var spd := current.speed_kmh() if is_instance_valid(current) else 0.0
+		if crowd_node:
+			print("   halk: animasyon %d ms (%d güncelleme), canlı %d" % [crowd_node.prof_anim / 1000, crowd_node.prof_n, crowd_node.alive_count()])
+			crowd_node.prof_anim = 0
+			crowd_node.prof_n = 0
 		print("t=%2d  mermi=%s  hız=%3.0f km/sa  yıkılan=%3d  kopan parça=%3d  hasarlı bina=%d  işlem=%4.0f ms/sn" % [
 			i + 1, pos, spd, _count_displaced(), released, broken, (now - sec_t) / 1000.0])
 		sec_t = now
@@ -550,6 +560,7 @@ func _siege_synth(n: int, energy: float) -> void:
 		for k in 60 * 4:
 			await get_tree().physics_frame
 		var alive := _soldiers.filter(func(s: Soldier) -> bool: return s.alive).size()
+		print("   halk: ", crowd_node.stats())
 		print("darbe %2d  sağlam blok %%%d  asker %d  işlem %d ms/4sn  %s" % [i + 1, roundi(castle.intact_ratio() * 100.0), alive, (Time.get_ticks_usec() - t0) / 1000, castle.pool.stats()])
 
 
@@ -627,6 +638,27 @@ func _shots2() -> void:
 	await _snap_views([[Vector3(38, 8, c - 86), Vector3(35, 6, c - 72)]], "s2_cracks")
 
 
+## Halk görüntüleri: ön avlu, demirci, talim, okçular; mancınık çevresine düşen oklar
+func _shots_life() -> void:
+	var c := castle.global_position.z
+	for k in 120:
+		await get_tree().physics_frame
+	await _snap_views([
+		[Vector3(-12, 7, c - 67), Vector3(-6, 0.5, c - 46)],
+		[Vector3(44, 3.5, c - 52), Vector3(52, 1.2, c - 44)],
+		[Vector3(-4, 5, c + 46), Vector3(-21, 1, c + 36)],
+		[Vector3(-30, 21, c - 66), Vector3(-45, 15.5, c - 72)],
+	], "shot_life")
+	for k in 400:
+		await get_tree().physics_frame
+	await _snap_views([[Vector3(10, 59, -12), Vector3(0, 55, -26)]], "shot_arrows")
+	# Alarm: ön avluya darbe, halk kaçışıyor
+	Building.strike(get_world_3d(), Vector3(-30, 4, c - 73.5), 9.0e6, Vector3(0, 0, 1))
+	for k in 70:
+		await get_tree().physics_frame
+	await _snap_views([[Vector3(-12, 7, c - 67), Vector3(-6, 0.5, c - 46)]], "shot_panic")
+
+
 func _shots() -> void:
 	var c := castle.global_position.z
 	var cviews := [
@@ -647,7 +679,7 @@ func _shots() -> void:
 	await _snap_views([cviews[2]], "shot_bridge_down")
 	var front: Array = castle.parts[0].chunks.filter(func(ch: Destructible) -> bool: return ch.intact and ch.layer <= 2 and ch.global_position.z < c - 70.0)
 	for i in 8:
-		var t: Destructible = front[(i * 37) % front.size()]
+		var t = front[(i * 37) % front.size()]
 		if not is_instance_valid(t):
 			continue
 		Building.strike(get_world_3d(), t.global_position + Vector3(0, 0, -1.5), 7.0e6, Vector3(0, 0, 1))

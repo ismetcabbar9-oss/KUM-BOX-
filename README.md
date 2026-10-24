@@ -1,4 +1,4 @@
-# Kaya Yuvarla — prototip v0.9
+# Kaya Yuvarla — prototip v0.10
 
 Geliştirme planı: [PLAN.md](PLAN.md) (kademeli aşamalar).
 
@@ -34,6 +34,22 @@ Sapan ve topta sarı noktalar tahmini yörüngeyi gösterir.
 **Yeni mermiler (v0.6):** **Zincirli gülle** (havada ikiye ayrılır, aradaki esnemez zincirle dönerek uçar), **Üçlü testere** (havada ±8° açıyla üç diske ayrılır), **Yapışkan bomba** (değdiği yere yapışır, hızlanan bip sesleriyle 1,8 sn sonra patlar; hareketli gövdeye iğnelenir).
 
 **Engeller:** dönen çelik pervane (kinematik), sallanan yıkım gülle sarkacı (gerçek menteşe), konteyner yığınları, beton bariyerler, tuğla duvar, variller, sandıklar, taşlar.
+
+## v0.10 (Yaşayan Kale — Aşama C: kalabalık ve hareket)
+
+- **76 figür, 3 tür:** asker, okçu, köylü. Hepsi iskeletli modeller. Yürüme, koşma, ölüm ve talim animasyonları başka Mixamo iskeletlerinden aktarıldı (`tools/retarget_anims.gd`).
+- **Davranışlar:**
+  - **Okçular** (16): Kule ve sur tepelerinden etkin fırlatıcıya balistik ok atar. Oklar mancınık platformunun çevresine saplanır; isabet ettiği askeri öldürür.
+  - **Devriyeler:** Dış ve iç sur yollarında gidip gelir.
+  - **Avlu yürüyüşleri:** Asker ve köylüler ön avlu halkasında, yan koridorlarda ve iç avluda dolaşır.
+  - **İş başındakiler:** Demirci örse çekiç vurur (sesli), odun kesen, kuyu başında sohbet eden köylüler, ahır önü, kışla kapısında bekleşen askerler.
+  - **Kılıç talimi:** İç avluda karşılıklı iki sıra asker.
+  - **Panik:** Darbe ya da patlama olunca yakındaki halk koşarak kaçar; ön avludakiler iç kapıdan içeri kaçar. 8–16 sn sonra aynı yoldan işine döner.
+  - **Ölüm:** Üstüne mermi, tuğla ya da ok gelince, patlamada veya altındaki taş koparsa ölüm animasyonuyla yığılır.
+- **Sesler (CC0, OpenGameArt):** Alarm borazanı, kalabalık bağırış uğultusu, ölüm çığlıkları, korku bağırışları, ok vınlaması ve saplanması, örs.
+- **Performans:**
+  - Animasyonlar mesafeye göre seyrek güncellenir: 30 m içinde her kare, uzaklaştıkça 2, 4, 8, 16 karede bir.
+  - Aktarılan animasyonlarda parmak ve yüz kemikleri atlanır.
 
 ## v0.9 (Yaşayan Kale — Aşama B: daha gerçek yıkım)
 

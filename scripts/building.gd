@@ -91,6 +91,8 @@ static func strike(world: World3D, point: Vector3, energy: float, direction: Vec
 	q.collision_mask = 2
 	if exclude:
 		q.exclude = [(exclude as CollisionObject3D).get_rid()]
+	if Crowd.inst and energy > 400000.0:
+		Crowd.inst.alarm(point, energy)
 	var by_building := {}
 	for hit in world.direct_space_state.intersect_shape(q, 64):
 		var d := hit["collider"] as Destructible

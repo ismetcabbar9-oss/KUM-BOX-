@@ -37,6 +37,11 @@ SKETCHFAB = {
     "caveman_a": ("3ba4da569fae4f2eb1a84988c90cc5ed", 1024),
     "caveman_b": ("83d99a21ce154571bdf6d4ecef2fe183", 1024),
     "soldier": ("271c26d2137a46f6911b09566b552d14", 512),
+    "anim_donor": ("f1775be7b1b94e4ea40d25287585ee69", 256),  # yalnız animasyonları kullanılır
+    "peasant": ("e279c8bba68941088c6de68b7b7aeab7", 512),
+    "peasant_swing": ("a1b90d1f7d834f17a24b7a7c2429cd2f", 512),  # yalnız animasyonu
+    "peasant_idle": ("2a2ab18caa6e48b0a709d7ef52a78e70", 512),  # yalnız animasyonu
+    "archer": ("dda7a92d3bbf4a7aacfb5a2ed9bdf6d8", 512),
 }
 POLYHAVEN = {"barrel": "Barrel_01"}
 
