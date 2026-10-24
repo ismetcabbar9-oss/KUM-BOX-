@@ -10,6 +10,8 @@ signal slowmo_toggled(on: bool)
 signal quality_pressed
 signal map_pressed
 signal option_pressed
+signal mission_selected(id: String)
+signal result_action(action: String)
 
 var speed_label: Label
 var destroy_label: Label
@@ -24,6 +26,11 @@ var fps_label: Label
 var quality_button: Button
 var map_button: Button
 var credits_panel: PanelContainer
+var missions_panel: PanelContainer
+var result_panel: PanelContainer
+var mission_label: Label
+var _missions_list: VBoxContainer
+var _root: Control
 var _slowmo := false
 var buttons: GridContainer
 var hint_box: MarginContainer
@@ -93,6 +100,9 @@ func _ready() -> void:
 	top.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	top.add_theme_constant_override("separation", 10)
 	margin.add_child(top)
+	var mis := _button(top, "GÖREVLER", func() -> void: missions_panel.visible = not missions_panel.visible)
+	mis.custom_minimum_size = Vector2(170, 56)
+	mis.add_theme_font_size_override("font_size", 20)
 	map_button = _button(top, "HARİTA", func() -> void: map_pressed.emit())
 	map_button.custom_minimum_size = Vector2(190, 56)
 	map_button.add_theme_font_size_override("font_size", 20)
@@ -138,6 +148,21 @@ func _ready() -> void:
 	margin.add_child(hint_box)
 	get_viewport().size_changed.connect(_relayout)
 	_relayout()
+
+	_root = root
+	# Görev metni: üst orta
+	mission_label = Label.new()
+	mission_label.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	mission_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	mission_label.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	mission_label.offset_top = 100
+	mission_label.add_theme_font_size_override("font_size", 24)
+	mission_label.add_theme_color_override("font_color", Color(1.0, 0.88, 0.5))
+	mission_label.visible = false
+	root.add_child(mission_label)
+	missions_panel = _panel(root)
+	result_panel = _panel(root)
+	_build_missions_panel()
 
 	# Lisans paneli (CC-BY atıfları oyunda gösterilmeli)
 	credits_panel = PanelContainer.new()
@@ -212,7 +237,7 @@ func set_fps(fps: int, extra: String) -> void:
 
 func set_map_name(n: String) -> void:
 	map_button.text = n
-	map_button.disabled = true  # tek harita
+	map_button.visible = false  # tek harita: buton gereksiz (dikey ekranda yer açar)
 
 
 func set_quality_name(n: String) -> void:
@@ -220,7 +245,7 @@ func set_quality_name(n: String) -> void:
 
 
 func is_over_ui(pos: Vector2) -> bool:
-	if credits_panel.visible:
+	if credits_panel.visible or missions_panel.visible or result_panel.visible:
 		return true
 	for b in get_tree().get_nodes_in_group("hud_button"):
 		if (b as Control).get_global_rect().has_point(pos):
@@ -272,3 +297,91 @@ func set_ammo_name(n: String) -> void:
 
 func set_size_name(n: String) -> void:
 	size_button.text = "BOYUT: " + n
+
+
+func _panel(root: Control) -> PanelContainer:
+	var p := PanelContainer.new()
+	p.set_anchors_preset(Control.PRESET_CENTER)
+	p.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	p.grow_vertical = Control.GROW_DIRECTION_BOTH
+	var bg := StyleBoxFlat.new()
+	bg.bg_color = Color(0.05, 0.05, 0.06, 0.93)
+	bg.border_color = Color(1.0, 0.8, 0.4, 0.5)
+	bg.set_border_width_all(2)
+	bg.set_corner_radius_all(18)
+	bg.set_content_margin_all(26)
+	p.add_theme_stylebox_override("panel", bg)
+	p.visible = false
+	root.add_child(p)
+	return p
+
+
+func _title(parent: Control, text: String, size := 34) -> Label:
+	var l := Label.new()
+	l.text = text
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.add_theme_font_size_override("font_size", size)
+	parent.add_child(l)
+	return l
+
+
+## Görev listesi: her görev bir buton (kazanılmış yıldızlarla) + serbest oyun
+func _build_missions_panel() -> void:
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 10)
+	missions_panel.add_child(box)
+	_title(box, "KUŞATMA GÖREVLERİ")
+	_missions_list = VBoxContainer.new()
+	_missions_list.add_theme_constant_override("separation", 8)
+	box.add_child(_missions_list)
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 12)
+	box.add_child(row)
+	_button(row, "SERBEST OYUN", func() -> void: mission_selected.emit(""))
+	_button(row, "KAPAT", func() -> void: missions_panel.visible = false)
+	refresh_missions()
+
+
+func refresh_missions() -> void:
+	for c in _missions_list.get_children():
+		c.queue_free()
+	var stars := Missions.load_stars()
+	for m in Missions.LIST:
+		var st := int(stars.get(m["id"], 0))
+		var txt := "%s   %s   (en çok %d atış)" % ["★".repeat(st) + "☆".repeat(3 - st), m["title"], m["limit"]]
+		var b := _button(_missions_list, txt, func() -> void: mission_selected.emit(m["id"]))
+		b.custom_minimum_size = Vector2(620, 60)
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		b.tooltip_text = m["goal"]
+
+
+func set_mission_text(t: String) -> void:
+	mission_label.text = t
+	mission_label.visible = t != ""
+
+
+## Görev sonucu: yıldızlar + tekrar / sonraki / serbest
+func show_result(m: Dictionary, success: bool, stars: int, shots: int) -> void:
+	for c in result_panel.get_children():
+		c.queue_free()
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 14)
+	result_panel.add_child(box)
+	_title(box, ("GÖREV BAŞARILI" if success else "GÖREV BAŞARISIZ"), 40)
+	_title(box, m["title"] + " — " + m["goal"], 24)
+	if success:
+		var st := _title(box, "★".repeat(stars) + "☆".repeat(3 - stars), 72)
+		st.add_theme_color_override("font_color", Color(1.0, 0.82, 0.25))
+		_title(box, "%d atışta" % shots, 26)
+	else:
+		_title(box, "Atış hakkın bitti", 26)
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 12)
+	box.add_child(row)
+	_button(row, "TEKRAR", func() -> void: result_action.emit("retry"))
+	if success and Missions.next_of(m["id"]) != "":
+		_button(row, "SONRAKİ GÖREV", func() -> void: result_action.emit("next"))
+	_button(row, "SERBEST OYUN", func() -> void: result_action.emit("free"))
+	result_panel.visible = true

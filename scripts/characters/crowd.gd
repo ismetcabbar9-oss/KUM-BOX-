@@ -17,7 +17,7 @@ var camera: Camera3D
 var target := Vector3.ZERO
 var _frame := 0
 var _acc := PackedFloat32Array()
-var _arrows: Array[Arrow] = []
+var _arrows: Array = []
 var _horn_cd := 0.0
 var _yell_cd := 0.0
 var _scream_cd := 0.0
@@ -174,10 +174,10 @@ func archer_shot(s: Soldier) -> void:
 		return
 	_arrow_cd = 0.35
 	if _arrows.size() >= MAX_ARROWS:
-		var old: Arrow = _arrows.pop_front()
+		var old = _arrows.pop_front()
 		if is_instance_valid(old):
 			old.queue_free()
-	_arrows = _arrows.filter(func(a: Arrow) -> bool: return is_instance_valid(a))
+	_arrows = _arrows.filter(func(a) -> bool: return is_instance_valid(a))
 	var start := s.global_position + Vector3.UP * 1.5 + s.global_transform.basis.z * 0.6
 	var aim := target + Vector3(randf_range(-14, 14), 0, randf_range(-18, 10))
 	var v := _ballistic(start, aim, deg_to_rad(randf_range(32.0, 42.0)))

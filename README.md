@@ -1,4 +1,4 @@
-# Kaya Yuvarla — prototip v0.10
+# Kaya Yuvarla — prototip v1.0
 
 Geliştirme planı: [PLAN.md](PLAN.md) (kademeli aşamalar).
 
@@ -34,6 +34,19 @@ Sapan ve topta sarı noktalar tahmini yörüngeyi gösterir.
 **Yeni mermiler (v0.6):** **Zincirli gülle** (havada ikiye ayrılır, aradaki esnemez zincirle dönerek uçar), **Üçlü testere** (havada ±8° açıyla üç diske ayrılır), **Yapışkan bomba** (değdiği yere yapışır, hızlanan bip sesleriyle 1,8 sn sonra patlar; hareketli gövdeye iğnelenir).
 
 **Engeller:** dönen çelik pervane (kinematik), sallanan yıkım gülle sarkacı (gerçek menteşe), konteyner yığınları, beton bariyerler, tuğla duvar, variller, sandıklar, taşlar.
+
+## v1.0 (Yaşayan Kale — Aşama D: oynanış)
+- Mancınık nişan yardımı: atış yayı (noktalar) + sarı iniş halkası. Kalibrasyon tablosundan
+  (assets/data/trebuchet_castle.json) karşı ağırlık / mermi kütlesine göre tahmin; son atışın
+  düştüğü yer kırmızı halka. Bilgi satırında "Menzil ~X m".
+- Kuşatma görevleri (GÖREVLER düğmesi): Asma Köprü, Kapı Kuleleri, Gedik, Avlu Baskını,
+  Komutan, Sancak, Yerle Bir. Atış sınırı, 1-3 yıldız, ilerleme kaydı (user://kaya_save.json).
+  Sonuç ekranı: TEKRAR / SONRAKİ GÖREV / SERBEST OYUN.
+- Yavaş çekim sinematik: kule çökünce, köprü ya da sancak düşünce kamera 3 sn olayın etrafında
+  döner, zaman 0,25× (canlı yavaş çekim; kayıtlı tekrar değil). 12 sn bekleme süresi.
+- Yangın: yeni mermi ATEŞ GÜLLESİ. Ahşap çatı/ahır/köprü tutuşur, ateş komşu ahşaba yayılır,
+  yanan kalas kömürleşip düşer. Alev/duman havuzlu (en çok 28 kaynak), ateş sesi.
+- HARİTA düğmesi kaldırıldı (tek harita), dikey ekranda üst sıra sığıyor.
 
 ## v0.10 (Yaşayan Kale — Aşama C: kalabalık ve hareket)
 

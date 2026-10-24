@@ -30,6 +30,8 @@ SOURCES = {
     "swishes.zip": ("swishes-sound-pack", "artisticdude", "Swishes Sound Pack"),
     "100-CC0-wood-metal-SFX.zip": ("100-cc0-metal-and-wood-sfx", "rubberduck", "100 CC0 metal and wood SFX"),
     "forger_0.ogg": ("hammer-on-anvil", "themightyglider", "Hammer on Anvil"),
+    "fire.wav": ("fireplace-sound-loop", "PagDev", "Fireplace Sound loop"),
+    "fire-1_0.ogg": ("fire-crackling", "AntumDeluge", "Fire Crackling"),
 }
 
 
@@ -146,6 +148,10 @@ def main():
     write("anvil_0", fade(trim(load(files["forger_0.ogg"])), 0.002, 0.2), 0.8)
     for i, f in enumerate(["hammer_01.ogg", "hammer_03.ogg"]):
         write(f"anvil_{i + 1}", fade(trim(load(find(wd, f)))), 0.8)
+    # Yangın: çıtırtı döngüsü + tutuşma
+    fire = load(files["fire.wav"])
+    write("fire_loop", loop(fire[:min(len(fire), int(12 * SR))], 1.0), 0.8)
+    write("ignite_0", fade(trim(load(files["fire-1_0.ogg"]))[:int(2.5 * SR)], 0.005, 0.6), 0.85)
     # Atıflar
     cred = os.path.join(OUT, "CREDITS_SOUNDS.md")
     text = open(cred).read()

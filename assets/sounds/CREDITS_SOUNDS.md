@@ -60,3 +60,5 @@ Freesound bu geliştirme ortamından erişilemediği için kale kalabalığı se
 - [Swishes Sound Pack](https://opengameart.org/content/swishes-sound-pack) — artisticdude
 - [100 CC0 metal and wood SFX](https://opengameart.org/content/100-cc0-metal-and-wood-sfx) — rubberduck
 - [Hammer on Anvil](https://opengameart.org/content/hammer-on-anvil) — themightyglider
+- [Fireplace Sound loop](https://opengameart.org/content/fireplace-sound-loop) — PagDev
+- [Fire Crackling](https://opengameart.org/content/fire-crackling) — AntumDeluge

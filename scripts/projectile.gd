@@ -19,8 +19,9 @@ const AMMO := {
 	"chain": {"name": "ZİNCİRLİ GÜLLE", "density": 7850.0},
 	"multisaw": {"name": "ÜÇLÜ TESTERE", "density": 7850.0},
 	"sticky": {"name": "YAPIŞKAN BOMBA", "density": 1400.0},
+	"fire": {"name": "ATEŞ GÜLLESİ", "density": 900.0},
 }
-const ORDER := ["granite", "basalt", "mossy", "sandstone", "river", "saw", "steel", "bomb", "chain", "multisaw", "sticky"]
+const ORDER := ["granite", "basalt", "mossy", "sandstone", "river", "saw", "steel", "bomb", "chain", "multisaw", "sticky", "fire"]
 ## Zincirli gülle: iki gülle arası zincir boyu (yarıçap katı)
 const CHAIN_LEN := 7.0
 const STICKY_FUSE := 1.8
@@ -53,6 +54,8 @@ var _fuse := 0.0
 var _beep_t := 0.0
 var _glow: StandardMaterial3D
 var _in_water := false
+var _fire_fx: GPUParticles3D
+var _ignite_cd := 0.0
 
 
 ## r: yarıçap (m). rolling: rampada yuvarlanacaksa küre çarpışma kullanılır.
@@ -103,6 +106,8 @@ func setup(ammo_id: String, r: float, rolling: bool) -> void:
 				_build_sticky(radius, density)
 				pm.friction = 1.0
 				pm.bounce = 0.0
+			"fire":
+				_build_fire(r, density)
 	physics_material_override = pm
 	if _loop == null:
 		_loop = AudioStreamPlayer3D.new()
@@ -247,6 +252,45 @@ func _build_sticky(r: float, density: float) -> void:
 	mass = 4.0 / 3.0 * PI * pow(r, 3) * density
 
 
+## Ateş güllesi: ziftli bez sarılı top, yanarak uçar
+func _build_fire(r: float, density: float) -> void:
+	var sm := SphereMesh.new()
+	sm.radius = r
+	sm.height = 2.0 * r
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.12, 0.08, 0.05)
+	mat.roughness = 0.9
+	mat.emission_enabled = true
+	mat.emission = Color(1.0, 0.4, 0.08)
+	mat.emission_energy_multiplier = 1.6
+	sm.material = mat
+	var mi := MeshInstance3D.new()
+	mi.mesh = sm
+	add_child(mi)
+	var sphere := SphereShape3D.new()
+	sphere.radius = r
+	var cs := CollisionShape3D.new()
+	cs.shape = sphere
+	add_child(cs)
+	mass = 4.0 / 3.0 * PI * pow(r, 3) * density
+
+
+## Uçarken alev izi (yangın sisteminin alev görünümünü kullanır)
+func _start_fire_trail() -> void:
+	if FireSystem.inst == null or _fire_fx:
+		return
+	var src: GPUParticles3D = FireSystem.inst._fx[0]
+	_fire_fx = GPUParticles3D.new()
+	_fire_fx.process_material = src.process_material
+	_fire_fx.draw_pass_1 = src.draw_pass_1
+	_fire_fx.amount = 40
+	_fire_fx.lifetime = 0.8
+	_fire_fx.local_coords = false
+	_fire_fx.scale = Vector3.ONE * maxf(radius, 0.6)
+	add_child(_fire_fx)
+	_fire_fx.emitting = true
+
+
 func display_name() -> String:
 	return AMMO[ammo]["name"]
 
@@ -256,6 +300,8 @@ func launch(velocity: Vector3, spin := Vector3.ZERO) -> void:
 	freeze = false
 	launched = true
 	linear_velocity = velocity
+	if ammo == "fire":
+		_start_fire_trail()
 	if ammo == "saw" or ammo == "multisaw":
 		# Testere: kendi ekseninde (yerel X) yüksek devir; yere değince ileri sürer
 		var axis := global_transform.basis.x.normalized()
@@ -282,7 +328,10 @@ func _physics_process(delta: float) -> void:
 	if not launched or exploded:
 		return
 	_age += delta
+	_ignite_cd -= delta
 	_touching = get_contact_count() > 0
+	if ammo == "fire" and _touching and _age > 0.3:
+		_fire_impact()
 	var v := linear_velocity
 	var spd := v.length()
 	if ammo == "sticky":
@@ -328,6 +377,8 @@ func _physics_process(delta: float) -> void:
 		if ammo == "bomb" and _age > 0.2:
 			explode()
 			return
+		if ammo == "fire":
+			_fire_impact()
 		var kind := "metal" if ammo in ["saw", "steel", "chain", "multisaw", "sticky"] else "rock"
 		Sfx.impact(kind, p, dv * 3.0)
 		Fx.dust(p, clampf(dv * radius * 0.5, 0.5, 2.5))
@@ -390,8 +441,12 @@ func _predictive_strike(delta: float) -> void:
 		return
 	if ammo == "sticky":
 		return  # yapışkan bomba binayı kırmaz, yapışır
+	if ammo == "fire":
+		_fire_impact()
 	_strike_cooldown = 0.06
 	var e := kinetic_energy()
+	if ammo == "fire":
+		e *= 0.5  # ziftli bez topu: yapıya zayıf darbe, asıl etkisi yangın
 	var used := Building.strike(get_world_3d(), ahead + v.normalized() * radius * 0.6, e, v, self)
 	if used > 0.0:
 		# Kırmaya giden enerji mermiden düşülür
@@ -401,6 +456,14 @@ func _predictive_strike(delta: float) -> void:
 			angular_velocity *= sqrt(remain)
 			Sfx.impact("metal", global_position, 20.0)
 		Fx.shake(clampf(used / 2.0e6, 0.2, 1.0))
+
+
+## Ateş güllesi çarptı: çevresindeki ahşabı tutuştur (yuvarlanırken de, aralıklarla)
+func _fire_impact() -> void:
+	if _ignite_cd > 0.0 or FireSystem.inst == null or _age > 20.0:
+		return
+	_ignite_cd = 0.5
+	FireSystem.inst.ignite_area(global_position, 6.0 + radius * 2.0)
 
 
 func _thaw_nearby() -> void:

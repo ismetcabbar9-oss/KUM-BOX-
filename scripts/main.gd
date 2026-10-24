@@ -20,6 +20,8 @@ const MAPS := {"castle": "KALE"}
 
 ## Sahne yeniden yüklendiğinde de korunur
 static var map_name := "castle"
+## Etkin kuşatma görevi ("" = serbest oyun)
+static var mission_id := ""
 
 var camera: Camera3D
 var hud: CanvasLayer
@@ -39,6 +41,13 @@ var _buildings: Array[Building] = []
 var crew: Crew
 var castle: Castle
 var crowd_node: Crowd
+var mission: MissionRunner
+var _cine: Camera3D
+var _cine_t := 0.0
+var _cine_cd := 0.0
+var _cine_center := Vector3.ZERO
+var _cine_angle := 0.0
+var _slow_user := false
 var _soldiers: Array[Soldier] = []
 
 
@@ -78,6 +87,7 @@ func _ready() -> void:
 		Sfx.set_slow_motion(false)
 		get_tree().reload_current_scene())
 	hud.slowmo_toggled.connect(func(on: bool) -> void:
+		_slow_user = on
 		Engine.time_scale = 0.3 if on else 1.0
 		Sfx.set_slow_motion(on))
 	hud.option_pressed.connect(func() -> void:
@@ -85,6 +95,25 @@ func _ready() -> void:
 		_reload_if_waiting())
 	hud.quality_pressed.connect(func() -> void: _apply_quality((quality + 1) % QUALITY.size()))
 	hud.set_map_name(MAPS[map_name])
+	hud.mission_selected.connect(func(id: String) -> void:
+		mission_id = id
+		_restart())
+	hud.result_action.connect(func(a: String) -> void:
+		match a:
+			"next":
+				mission_id = Missions.next_of(mission_id)
+			"free":
+				mission_id = ""
+		_restart())
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--mission="):
+			mission_id = a.get_slice("=", 1)
+	if mission_id != "" and not Missions.find(mission_id).is_empty():
+		mission = MissionRunner.new()
+		add_child(mission)
+		mission.start(Missions.find(mission_id), castle, crowd_node, hud)
+		if "--autotest" in OS.get_cmdline_user_args():
+			mission.finished.connect(func(ok: bool, st: int) -> void: print("GÖREV %s: %s, %d yıldız, %d atış" % [mission_id, "BAŞARILI" if ok else "BAŞARISIZ", st, mission.shots]))
 
 	_destructibles = get_tree().get_nodes_in_group("destructible")
 	var args := OS.get_cmdline_user_args()
@@ -196,6 +225,7 @@ func _build_launchers() -> void:
 		if a.begins_with("--cw="):
 			tb.counterweight_t = float(a.get_slice("=", 1))
 	_add_launcher(tb, Vector3(0, deck_y, -24))
+	tb.use_aim_table("res://assets/data/trebuchet_castle.json")
 	_add_launcher(Slingshot.new(), Vector3(42, 0, 140))
 	_add_launcher(AirCannon.new(), Vector3(-22, 0, 160))
 	_add_launcher(RocketSled.new(), Vector3(22, 0, 120))
@@ -229,6 +259,11 @@ func _build_castle() -> void:
 	for p in castle.parts:
 		_buildings.append(p)
 	Projectile.water_zones = castle.world_water()
+	castle.big_event.connect(_on_big_event)
+	var fire := FireSystem.new()
+	fire.name = "Yangin"
+	fire.castle = castle
+	add_child(fire)
 	crowd_node = Crowd.new()
 	crowd_node.name = "Halk"
 	add_child(crowd_node)
@@ -342,6 +377,8 @@ func _reload() -> void:
 
 
 func _on_fire_pressed() -> void:
+	if mission and mission.done:
+		return
 	if launcher.is_ready():
 		launcher.fire()
 	elif launcher.secondary():
@@ -350,9 +387,56 @@ func _on_fire_pressed() -> void:
 		_reload()
 
 
+## Büyük an: ~3 sn (gerçek zaman) ağır çekim, olayın çevresinde dönen sinematik kamera
+func _on_big_event(pos: Vector3, _kind: String) -> void:
+	var args := OS.get_cmdline_user_args()
+	if _cine_cd > 0.0 or ("--autotest" in args and not "--cine" in args):
+		return
+	if _cine == null:
+		_cine = Camera3D.new()
+		_cine.fov = camera.fov
+		_cine.far = camera.far
+		add_child(_cine)
+	_cine_center = pos
+	# Mevcut kameranın tarafından başla
+	var from := camera.global_position - pos
+	_cine_angle = atan2(from.x, from.z)
+	_cine_t = 3.0
+	_cine_cd = 12.0
+	_cine.current = true
+	Engine.time_scale = 0.25
+	Sfx.set_slow_motion(true)
+	hud.set_info("")
+
+
+func _update_cine(delta: float) -> void:
+	_cine_cd -= delta
+	if _cine_t <= 0.0:
+		return
+	# delta ağır çekimle ölçeklenir: gerçek zamanı kullan
+	var real := delta / maxf(Engine.time_scale, 0.01)
+	_cine_t -= real
+	_cine_angle += real * 0.35
+	var dist := 55.0
+	_cine.global_position = _cine_center + Vector3(sin(_cine_angle) * dist, 22.0, cos(_cine_angle) * dist)
+	_cine.look_at(_cine_center, Vector3.UP)
+	if _cine_t <= 0.0:
+		camera.current = true
+		Engine.time_scale = 0.3 if _slow_user else 1.0
+		Sfx.set_slow_motion(_slow_user)
+
+
+func _restart() -> void:
+	Engine.time_scale = 1.0
+	Sfx.set_slow_motion(false)
+	get_tree().reload_current_scene()
+
+
 func _on_fired(p: Projectile) -> void:
 	current = p
 	crew.on_fired()
+	if mission:
+		mission.on_fired(p)
 	hud.set_ready(false, "", true)
 	if launcher.flight_hint() != "":
 		hud.set_flight(launcher.flight_hint())
@@ -370,6 +454,7 @@ func _count_displaced() -> int:
 
 
 func _process(delta: float) -> void:
+	_update_cine(delta)
 	_stat_timer -= delta
 	if _stat_timer <= 0.0:
 		_stat_timer = 0.5
@@ -452,6 +537,28 @@ func _autotest() -> void:
 	for s in _soldiers:
 		if not s.alive:
 			print("  ölü asker: ", s.global_position)
+	if "--aimtest" in args:
+		var tb := launcher as Trebuchet
+		for cw in [150.0, 250.0, 295.0, 340.0, 450.0, 700.0]:
+			if not tb.is_ready():
+				_reload()
+			tb.counterweight_t = cw
+			tb.cw.mass = cw * 1000.0
+			for f in 3:
+				await get_tree().process_frame
+			var pred := tb._aim_range
+			var ring := tb._aim_ring.global_position
+			tb.fire()
+			for f in 60 * 12:
+				await get_tree().physics_frame
+				if tb._last_mark.visible and tb._flying == null:
+					break
+			var act := tb._last_mark.global_position
+			print("cw=%4.0f  tahmin menzil=%.0f m halka=%s   gerçek=%s  fark=%.1f m" % [cw, pred, ring.round(), act.round(), Vector2(act.x - ring.x, act.z - ring.z).length()])
+			tb._last_mark.visible = false
+			_reload()
+		get_tree().quit()
+		return
 	if "--drop-bridge" in args:
 		castle.bridge.drop(Vector3.ZERO)
 		for k in 8:
@@ -459,6 +566,10 @@ func _autotest() -> void:
 				await get_tree().physics_frame
 			var bb := castle.bridge.body
 			print("köprü açı=%.0f° uç=%s" % [rad_to_deg(castle.bridge._angle), bb.to_global(Vector3(0, 0, 8)).round()])
+		get_tree().quit()
+		return
+	if "--shots4" in args:
+		await _shots_fire()
 		get_tree().quit()
 		return
 	if "--shots3" in args:
@@ -636,6 +747,22 @@ func _shots2() -> void:
 		for f in 10:
 			await get_tree().physics_frame
 	await _snap_views([[Vector3(38, 8, c - 86), Vector3(35, 6, c - 72)]], "s2_cracks")
+
+
+## Yangın: kışla çatısı ve ahır tutuşturulur, yayılma ve çöküş görüntülenir
+func _shots_fire() -> void:
+	var c := castle.global_position.z
+	var barracks := castle.to_global(Vector3(-56, 7, -42))
+	var stable := castle.to_global(Vector3(68, 5, 30))
+	FireSystem.inst.ignite_area(barracks, 4.0)
+	FireSystem.inst.ignite_area(stable, 4.0)
+	var views := [[Vector3(-38, 16, c - 64), barracks], [Vector3(50, 14, c + 8), stable]]
+	for k in 240:
+		await get_tree().physics_frame
+	await _snap_views(views, "shot_fire_a")
+	for k in 600:
+		await get_tree().physics_frame
+	await _snap_views(views, "shot_fire_b")
 
 
 ## Halk görüntüleri: ön avlu, demirci, talim, okçular; mancınık çevresine düşen oklar

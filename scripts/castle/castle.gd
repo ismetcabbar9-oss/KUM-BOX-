@@ -30,6 +30,9 @@ var bridge: Drawbridge
 var flag: Flag
 var water_zones: Array[AABB] = []
 
+## Büyük an (kule çöküşü, köprü, sancak): dünya konumu + tür
+signal big_event(pos: Vector3, kind: String)
+
 
 func build() -> void:
 	name = "Kale"
@@ -47,6 +50,10 @@ func build() -> void:
 	_moat()
 	_bridge()
 	_flag()
+	for p in parts:
+		p.tower_fallen.connect(func(pos: Vector3) -> void: big_event.emit(pos, "tower"))
+	bridge.fell.connect(func() -> void: big_event.emit(bridge.global_position + Vector3(0, 6, -6), "bridge"))
+	flag.fell.connect(func() -> void: big_event.emit(flag.global_position, "flag"))
 
 
 func _part(n: String) -> Fortress:

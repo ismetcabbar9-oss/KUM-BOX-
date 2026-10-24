@@ -1,5 +1,8 @@
 class_name Trebuchet
 extends Launcher
+
+## Bırakma pimi çözüldü: mermi kaşıktan ayrıldı
+signal released(p: Projectile)
 ## Mancınık (karşı ağırlıklı): tamamen fiziksel.
 ##  - Kol: menteşeyle (HingeJoint3D) gövdeye bağlı RigidBody. Açı sınırı = durdurucu.
 ##  - Karşı ağırlık: kolun kısa ucuna menteşeyle asılı, serbest sallanır.
@@ -24,6 +27,14 @@ var _arm_rest: Transform3D
 var _cw_rest: Transform3D
 var _pin: PinJoint3D
 var _pivot: HingeJoint3D
+## Nişan yardımı: kalibrasyon tablosu (karşı ağırlık × mermi kütlesi -> bırakma konumu/hızı)
+var _table := {}
+var _aim_dots: MultiMeshInstance3D
+var _aim_ring: MeshInstance3D
+var _last_mark: MeshInstance3D
+var _aim_key := ""
+var _aim_range := -1.0
+var _flying: Projectile
 var _wood: Material
 var _iron: Material
 
@@ -141,6 +152,157 @@ func _make_pivot() -> void:
 	_pivot.node_b = NodePath("")
 
 
+## Nişan yardımını etkinleştir (tablo tools/dev/calibrate_trebuchet ile üretilir)
+func use_aim_table(path: String) -> void:
+	var txt := FileAccess.get_file_as_string(path)
+	if txt != "":
+		_table = JSON.parse_string(txt)
+	released.connect(func(p: Projectile) -> void: _flying = p)
+
+
+static func _bracket(arr: Array, x: float, log_scale: bool) -> Array:
+	var v := log(x) if log_scale else x
+	for i in arr.size() - 1:
+		var a: float = log(arr[i]) if log_scale else arr[i]
+		var b: float = log(arr[i + 1]) if log_scale else arr[i + 1]
+		if v <= b or i == arr.size() - 2:
+			return [i, clampf((v - a) / (b - a), 0.0, 1.0)]
+	return [0, 0.0]
+
+
+## Bırakma anı tahmini: [dünya konumu, dünya hızı]; mermi atılamıyorsa boş
+func predict_release() -> Array:
+	if _table.is_empty() or loaded == null:
+		return []
+	var ci := _bracket(_table["cw"], counterweight_t, false)
+	var mi := _bracket(_table["mass"], loaded.mass, true)
+	var data: Array = _table["data"]
+	var acc := PackedFloat64Array([0, 0, 0, 0, 0, 0])
+	for dc in 2:
+		for dm in 2:
+			var cell: Array = data[ci[0] + dc][mi[0] + dm]
+			var w: float = (ci[1] if dc == 1 else 1.0 - ci[1]) * (mi[1] if dm == 1 else 1.0 - mi[1])
+			if cell.is_empty():
+				if w > 0.01:
+					return []
+				continue
+			for k in 6:
+				acc[k] += cell[k] * w
+	var pos := to_global(Vector3(acc[0], acc[1], acc[2]))
+	var vel := global_transform.basis * Vector3(acc[3], acc[4], acc[5])
+	return [pos, vel]
+
+
+func _aim_nodes() -> void:
+	if _aim_dots:
+		return
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.albedo_color = Color(1.0, 0.82, 0.25)
+	var dot := SphereMesh.new()
+	dot.radius = 0.35
+	dot.height = 0.7
+	dot.radial_segments = 8
+	dot.rings = 4
+	dot.material = m
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.mesh = dot
+	mm.instance_count = 48
+	_aim_dots = MultiMeshInstance3D.new()
+	_aim_dots.multimesh = mm
+	_aim_dots.top_level = true
+	_aim_dots.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(_aim_dots)
+	_aim_ring = _ring(Color(1.0, 0.82, 0.25), 4.0)
+	var mark := _ring(Color(0.95, 0.2, 0.15), 2.2)
+	_last_mark = mark
+	_last_mark.visible = false
+
+
+func _ring(c: Color, r: float) -> MeshInstance3D:
+	var tm := TorusMesh.new()
+	tm.inner_radius = r - 0.5
+	tm.outer_radius = r
+	tm.rings = 32
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.albedo_color = c
+	m.no_depth_test = true
+	m.render_priority = 1
+	tm.material = m
+	var mi := MeshInstance3D.new()
+	mi.mesh = tm
+	mi.top_level = true
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(mi)
+	return mi
+
+
+## Tahmini yörünge: noktalar + düşüş halkası (yalnız ayar değişince yeniden hesaplanır)
+func _update_aim() -> void:
+	if _table.is_empty():
+		return
+	_aim_nodes()
+	var ready := is_ready()
+	_aim_dots.visible = ready
+	_aim_ring.visible = ready
+	if not ready:
+		return
+	var key := "%.1f|%.2f|%.0f" % [counterweight_t, yaw_deg, loaded.mass]
+	if key == _aim_key:
+		return
+	_aim_key = key
+	var mm := _aim_dots.multimesh
+	var hide := Transform3D(Basis.from_scale(Vector3.ZERO), Vector3(0, -500, 0))
+	var rel := predict_release()
+	if rel.is_empty():
+		for i in mm.instance_count:
+			mm.set_instance_transform(i, hide)
+		_aim_ring.visible = false
+		_aim_range = -1.0
+		return
+	var p: Vector3 = rel[0]
+	var v: Vector3 = rel[1]
+	var dt := 1.0 / 30.0
+	var space := get_world_3d().direct_space_state
+	var dot_i := 0
+	var hit := {}
+	for step in 600:
+		v += Vector3(0, -9.81, 0) * dt
+		v *= 1.0 - 0.01 * dt
+		var np := p + v * dt
+		var q := PhysicsRayQueryParameters3D.create(p, np, 1 | 2)
+		q.exclude = [loaded.get_rid()]
+		hit = space.intersect_ray(q)
+		if hit:
+			break
+		p = np
+		if step % 8 == 0 and dot_i < mm.instance_count:
+			mm.set_instance_transform(dot_i, Transform3D(Basis.IDENTITY, p))
+			dot_i += 1
+	for i in range(dot_i, mm.instance_count):
+		mm.set_instance_transform(i, hide)
+	if hit:
+		var n: Vector3 = hit["normal"]
+		var b := Basis.looking_at(n.cross(Vector3.RIGHT).normalized() if absf(n.dot(Vector3.RIGHT)) < 0.9 else n.cross(Vector3.FORWARD).normalized(), n)
+		_aim_ring.global_transform = Transform3D(b, hit["position"] + n * 0.2)
+		_aim_range = Vector2(hit["position"].x - global_position.x, hit["position"].z - global_position.z).length()
+	else:
+		_aim_ring.visible = false
+		_aim_range = -1.0
+
+
+func _process(_delta: float) -> void:
+	_update_aim()
+	# Son atışın ilk çarptığı yer: kırmızı halka
+	if _flying and is_instance_valid(_flying):
+		if _flying.get_contact_count() > 0:
+			_last_mark.visible = true
+			_last_mark.global_transform = Transform3D(Basis.IDENTITY, _flying.global_position + Vector3.DOWN * (_flying.radius - 0.2))
+			_flying = null
+
+
 func _arm_box(size: Vector3, pos: Vector3, mat: Material) -> void:
 	var mi := MeshInstance3D.new()
 	var bm := BoxMesh.new()
@@ -226,10 +388,14 @@ func _physics_process(_delta: float) -> void:
 			loaded.add_collision_exception_with(arm)
 		_pin.queue_free()
 		_pin = null
+		released.emit(loaded)
 
 
 func info() -> String:
-	return "Yön %+d°   Karşı ağırlık %d t" % [roundi(yaw_deg), roundi(counterweight_t)]
+	var t := "Yön %+d°   Karşı ağırlık %d t" % [roundi(yaw_deg), roundi(counterweight_t)]
+	if not _table.is_empty():
+		t += ("   Menzil ~%d m" % roundi(_aim_range)) if _aim_range > 0.0 else "   Karşı ağırlık yetersiz"
+	return t
 
 
 func hint() -> String:

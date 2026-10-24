@@ -187,6 +187,12 @@ func finalize() -> void:
 	_compute_neighbors()
 
 
+## Tanım indeksindeki blok hâlâ sağlam mı (görev hedefleri için)
+func _alive_def(i: int) -> bool:
+	var b = _by_name.get("b%d" % i)
+	return b != null and is_instance_valid(b) and b.intact
+
+
 ## Komşuluk: uzamsal ızgara ile (döndürülmüş) sınır kutusu kesişimi
 func _compute_neighbors() -> void:
 	var cell := 5.0

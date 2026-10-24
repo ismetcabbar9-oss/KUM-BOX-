@@ -43,7 +43,8 @@ otomatik test + ekran görüntüsü + commit + ZIP.
 - [x] A: İç içe kale (dış/iç halka, ana kule, hendek, asma köprü, avlu binaları, sancak)
 - [x] B: Daha küçük tuğla (0,75 m) + görsel tuğla parçacıkları + moloz yığınları + çatlaklar
 - [x] C: Kalabalık (76 figür, mesafeye göre animasyon), okçular, devriye, işçiler, talim, kaçışma, sesler
-- [ ] D: Mancınık nişan yardımı, kuşatma görevleri + yıldız, yavaş çekim tekrar kamerası, yangın
+- [x] D: Mancınık nişan yardımı, kuşatma görevleri + yıldız, yavaş çekim tekrar kamerası, yangın
+- [ ] (isteğe bağlı) Kale karşılığı: kaleden mancınığa ateş
 
 ## Aşama 5 — Görevler ve haritalar
 - Görev türleri: X atışta Y% yıkım, belirli hedefi düşür, zincirleme çöküş, süre.

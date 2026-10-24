@@ -18,6 +18,7 @@ var _angle := 0.0  # 0: kalkık, π/2: yatık
 var _omega := 0.0
 var _landed := false
 var _rest: Transform3D
+var _burning := false
 var _poll := 0.0
 var _query: PhysicsShapeQueryParameters3D
 var _wall: Fortress
@@ -125,6 +126,26 @@ func _physics_process(delta: float) -> void:
 		if b and not b.freeze and b.linear_velocity.dot(inward) > 4.0 and 0.5 * b.mass * b.linear_velocity.length_squared() > 250000.0:
 			drop(b.linear_velocity)
 			return
+
+
+## Ateş: köprü yanar (alev), zincir bağlantıları yanınca birkaç saniye sonra düşer
+func burn() -> void:
+	if _burning or _down:
+		return
+	_burning = true
+	# Köprü tahtası yanan blok gibi görünsün: sahte Destructible yerine kendi alevleri
+	for k in 3:
+		var p := GPUParticles3D.new()
+		var src: GPUParticles3D = FireSystem.inst._fx[0]
+		p.process_material = src.process_material
+		p.draw_pass_1 = src.draw_pass_1
+		p.amount = 18
+		p.lifetime = 0.9
+		p.local_coords = false
+		p.position = Vector3((k - 1) * 3.0, 2.0 + k * 4.0, -0.6)
+		body.add_child(p)
+		p.emitting = true
+	get_tree().create_timer(randf_range(5.0, 8.0)).timeout.connect(func() -> void: drop(Vector3.ZERO))
 
 
 ## Zincirler kopar, köprü menteşesi etrafında düşer
