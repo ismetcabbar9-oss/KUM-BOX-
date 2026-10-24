@@ -211,3 +211,6 @@ func _check_support() -> void:
 					b.release(global_transform.basis * lean * b.mass * (0.2 + b.position.y * 0.05), b.global_position + Vector3.UP)
 			Sfx.crash(to_global(c + Vector3.UP * 15.0), crash_sound)
 			Fx.shake(1.0)
+			Fx.big_dust(to_global(c + Vector3.UP * 6.0))
+			# Çöküş sürerken taban çevresinde ikinci toz dalgası
+			get_tree().create_timer(1.8).timeout.connect(func() -> void: Fx.big_dust(to_global(c + Vector3.UP * 3.0)))

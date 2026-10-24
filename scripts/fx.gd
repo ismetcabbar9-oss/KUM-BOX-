@@ -5,6 +5,9 @@ signal shake_requested(amount: float)
 
 const POOL_SIZE := 10
 const RUBBLE_POOL := 8
+const BRICK_POOL := 12
+const MARK_POOL := 48
+const BIG_DUST_POOL := 4
 
 var _pool: Array[GPUParticles3D] = []
 var _next := 0
@@ -14,6 +17,12 @@ var _rubble_next := 0
 var _soft_tex: GradientTexture2D
 var _glass_mat: StandardMaterial3D
 var _glass_pm: ParticleProcessMaterial
+var _bricks: Array[GPUParticles3D] = []
+var _bricks_next := 0
+var _marks: Array[Decal] = []
+var _marks_next := 0
+var _big: Array[GPUParticles3D] = []
+var _big_next := 0
 
 
 func _ready() -> void:
@@ -79,6 +88,9 @@ func _ready() -> void:
 		add_child(p)
 		_pool.append(p)
 	_setup_rubble()
+	_setup_bricks()
+	_setup_marks()
+	_setup_big_dust()
 
 
 ## Görsel moloz: fizik gövdesi olmayan küçük taş parçaları (GPU parçacık, zemine çarpar).
@@ -116,6 +128,163 @@ func _setup_rubble() -> void:
 		p.visibility_aabb = AABB(Vector3(-20, -10, -20), Vector3(40, 30, 40))
 		add_child(p)
 		_rubble.append(p)
+
+
+## Görsel tuğla kırıntıları: fizik gövdesi olmayan küçük taş kesekleri (20–40 cm),
+## savrulup zemine çarpar, sekip durur, ömür sonunda küçülerek kaybolur.
+func _setup_bricks() -> void:
+	var bm := BoxMesh.new()
+	bm.size = Vector3(0.36, 0.2, 0.24)
+	var mat := StandardMaterial3D.new()
+	mat.albedo_texture = load("res://assets/textures/rock_boulder_dry_diff_1k.jpg")
+	mat.albedo_color = Color(0.8, 0.77, 0.72)
+	mat.uv1_triplanar = true
+	mat.uv1_scale = Vector3.ONE * 0.6
+	mat.roughness = 0.95
+	bm.material = mat
+	var pm := ParticleProcessMaterial.new()
+	pm.direction = Vector3(0, 1, 0)
+	pm.spread = 60.0
+	pm.initial_velocity_min = 3.0
+	pm.initial_velocity_max = 11.0
+	pm.gravity = Vector3(0, -9.8, 0)
+	pm.scale_min = 0.5
+	pm.scale_max = 1.6
+	var sc := Curve.new()
+	sc.add_point(Vector2(0, 1))
+	sc.add_point(Vector2(0.85, 1))
+	sc.add_point(Vector2(1, 0))
+	var sct := CurveTexture.new()
+	sct.curve = sc
+	pm.scale_curve = sct
+	pm.angular_velocity_min = -540.0
+	pm.angular_velocity_max = 540.0
+	pm.particle_flag_rotate_y = true
+	pm.collision_mode = ParticleProcessMaterial.COLLISION_RIGID
+	pm.collision_friction = 0.8
+	pm.collision_bounce = 0.2
+	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
+	pm.emission_sphere_radius = 1.2
+	for i in BRICK_POOL:
+		var p := GPUParticles3D.new()
+		p.one_shot = true
+		p.emitting = false
+		p.amount = 70
+		p.lifetime = 7.0
+		p.explosiveness = 0.95
+		p.process_material = pm.duplicate()
+		p.draw_pass_1 = bm
+		p.visibility_aabb = AABB(Vector3(-30, -10, -30), Vector3(60, 40, 60))
+		add_child(p)
+		_bricks.append(p)
+
+
+## Tuğla kırıntısı püskürt: dir yönüne (yukarı açılarak), amount 0..1
+func bricks(pos: Vector3, dir: Vector3, amount: float) -> void:
+	var p := _bricks[_bricks_next]
+	_bricks_next = (_bricks_next + 1) % BRICK_POOL
+	p.global_position = pos
+	p.amount_ratio = clampf(amount, 0.1, 1.0)
+	var m := p.process_material as ParticleProcessMaterial
+	m.direction = (dir.normalized() + Vector3.UP * 0.6).normalized()
+	p.restart()
+
+
+## Moloz izi: zeminde kalıcı toz/kırıntı lekesi (çıkartma), en eski yenisine yer açar
+func _setup_marks() -> void:
+	var img := Image.create(128, 128, false, Image.FORMAT_RGBA8)
+	var noise := FastNoiseLite.new()
+	noise.frequency = 0.08
+	noise.fractal_octaves = 4
+	var grit := FastNoiseLite.new()
+	grit.frequency = 0.5
+	for y in 128:
+		for x in 128:
+			var d := Vector2(x - 63.5, y - 63.5).length() / 64.0
+			var n := noise.get_noise_2d(x, y) * 0.5 + 0.5
+			var a := clampf((1.0 - d) * 1.6 - 0.3 + (n - 0.5) * 0.9, 0.0, 1.0)
+			var g := grit.get_noise_2d(x, y) * 0.5 + 0.5
+			var c := lerpf(0.42, 0.72, g) * lerpf(0.85, 1.05, n)
+			img.set_pixel(x, y, Color(c, c * 0.96, c * 0.9, a * 0.85))
+	var tex := ImageTexture.create_from_image(img)
+	for i in MARK_POOL:
+		var d := Decal.new()
+		d.texture_albedo = tex
+		d.size = Vector3(6, 2, 6)
+		d.visible = false
+		d.cull_mask = 1
+		d.distance_fade_enabled = true
+		d.distance_fade_begin = 220.0
+		d.distance_fade_length = 60.0
+		add_child(d)
+		_marks.append(d)
+
+
+func debris_mark(pos: Vector3, size: float) -> void:
+	var d := _marks[_marks_next]
+	_marks_next = (_marks_next + 1) % MARK_POOL
+	var s := clampf(size * randf_range(0.9, 1.4), 3.0, 14.0)
+	d.size = Vector3(s, 3.0, s)
+	d.global_position = pos
+	d.rotation.y = randf() * TAU
+	d.visible = true
+
+
+## Büyük toz bulutu (kule çöküşü): iri, yavaş yayılan, uzun ömürlü
+func _setup_big_dust() -> void:
+	var mat := StandardMaterial3D.new()
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	mat.vertex_color_use_as_albedo = true
+	mat.albedo_texture = _soft_tex
+	mat.albedo_color = Color(0.64, 0.6, 0.53, 0.5)
+	var quad := QuadMesh.new()
+	quad.size = Vector2(9, 9)
+	quad.material = mat
+	var pm := ParticleProcessMaterial.new()
+	pm.direction = Vector3.UP
+	pm.spread = 90.0
+	pm.initial_velocity_min = 2.0
+	pm.initial_velocity_max = 7.0
+	pm.gravity = Vector3(0, -0.3, 0)
+	pm.damping_min = 0.8
+	pm.damping_max = 1.6
+	pm.scale_min = 0.8
+	pm.scale_max = 2.2
+	var curve := Curve.new()
+	curve.add_point(Vector2(0, 0.5))
+	curve.add_point(Vector2(1, 2.0))
+	var ct := CurveTexture.new()
+	ct.curve = curve
+	pm.scale_curve = ct
+	var fade := Gradient.new()
+	fade.set_color(0, Color(1, 1, 1, 0.8))
+	fade.set_color(1, Color(1, 1, 1, 0))
+	var ft := GradientTexture1D.new()
+	ft.gradient = fade
+	pm.color_ramp = ft
+	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
+	pm.emission_box_extents = Vector3(8, 6, 8)
+	for i in BIG_DUST_POOL:
+		var p := GPUParticles3D.new()
+		p.one_shot = true
+		p.emitting = false
+		p.amount = 40
+		p.lifetime = 7.0
+		p.explosiveness = 0.6
+		p.process_material = pm
+		p.draw_pass_1 = quad
+		p.visibility_aabb = AABB(Vector3(-50, -10, -50), Vector3(100, 80, 100))
+		add_child(p)
+		_big.append(p)
+
+
+func big_dust(pos: Vector3) -> void:
+	var p := _big[_big_next]
+	_big_next = (_big_next + 1) % BIG_DUST_POOL
+	p.global_position = pos
+	p.restart()
 
 
 ## Cam kırıkları: parlak küçük üçgenimsi parçalar, zemine çarpıp seker

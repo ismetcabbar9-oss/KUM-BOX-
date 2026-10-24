@@ -9,10 +9,16 @@ extends Node3D
 ##    bağlı). Tavan dolunca en eski duran tuğlalar fizikten çıkarılıp sabit moloz
 ##    olarak çizilmeye devam eder.
 
-const SPAWN_PER_FRAME := 110
+const SPAWN_PER_FRAME := 160
+## Kademeli kırılma: darbe noktasına FINE_R'den yakın tuğla hücreleri 2×2×2 küçük tuğlaya
+## (0.75 × 0.5 × 0.5 m) ayrılır; uzak kısım orta tuğla (harçla tutunmuş küme) kalır.
+const FINE_R := 2.2
+const FINE_PER_BLOCK := 64
 const REST_FREEZE := 1.2
 
 const CAP := 1500
+## Fizikten çıkarılmış, yerde kalan moloz tuğlaları (çarpışmasız, tek çizim)
+const RUBBLE_CAP := 6000
 ## Aynı anda fizikte tutulan tuğla tavanı (grafik kalitesine göre, ≤ CAP)
 static var limit := 1500
 ## Aynı anda hareket eden tuğla tavanı: büyük çöküşte aşılırsa bloklar bütün kalır
@@ -54,7 +60,7 @@ func _ready() -> void:
 	box.size = Vector3.ONE
 	box.material = material
 	_mm = _make_mm(box, CAP)
-	_rubble = _make_mm(box, CAP)
+	_rubble = _make_mm(box, RUBBLE_CAP)
 	_bodies.resize(CAP)
 	_sizes.resize(CAP)
 	_prev_v.resize(CAP)
@@ -207,7 +213,7 @@ func _alloc() -> int:
 			continue
 		var t := b.global_transform
 		_rubble.set_instance_transform(_rubble_next, Transform3D(t.basis * Basis.from_scale(_sizes[i]), t.origin))
-		_rubble.set_instance_custom_data(_rubble_next, Color(_sizes[i].x, _sizes[i].y, _sizes[i].z, 1.0))
+		_rubble.set_instance_custom_data(_rubble_next, Color(_sizes[i].x, _sizes[i].y, _sizes[i].z, 2.0))
 		_rubble_next = (_rubble_next + 1) % _rubble.instance_count
 		b.queue_free()
 		_bodies[i] = null
@@ -216,9 +222,48 @@ func _alloc() -> int:
 	return -1
 
 
+## Tek tuğla üret (indeks döner; -1: havuz dolu)
+func _spawn(xf: Transform3D, local: Vector3, cell: Vector3, shape: BoxShape3D, m: float, v: Vector3, w: Vector3, d: Destructible) -> int:
+	var i := _alloc()
+	if i < 0:
+		return -1
+	var p := xf * local
+	var b := RigidBody3D.new()
+	var cs := CollisionShape3D.new()
+	cs.shape = shape
+	b.add_child(cs)
+	b.mass = m
+	b.physics_material_override = _pm
+	b.collision_layer = 2
+	b.collision_mask = 1 | 2 | 4 | 8 | 16
+	b.set_meta("brick", i)
+	b.set_meta("pool", self)
+	add_child(b)
+	b.global_transform = Transform3D(xf.basis, p)
+	# Dağılma: bloğun hızı + dönüşü + hafif dışa açılma; darbe noktasına yakın olan daha hızlı
+	var r := p - xf.origin
+	var near := 1.0
+	if d.hit_point != Vector3.INF:
+		near += 3.0 * exp(-p.distance_to(d.hit_point) / 1.8)
+	var push := v * near * randf_range(0.8, 1.3)
+	b.linear_velocity = push + w.cross(r) + r.normalized() * randf_range(0.5, 1.5)
+	b.angular_velocity = w + Vector3(randf_range(-1, 1), randf_range(-1, 1), randf_range(-1, 1)) * (1.0 + near)
+	b.sleeping_state_changed.connect(_on_sleep.bind(i))
+	_bodies[i] = b
+	_sizes[i] = cell
+	_prev_v[i] = b.linear_velocity
+	_rest[i] = 0.0
+	_mm.set_instance_custom_data(i, Color(cell.x, cell.y, cell.z, 2.0))
+	_draw(i, b.global_transform)
+	_active[i] = true
+	_order.append(i)
+	return i
+
+
 ## Bloğu tuğla ızgarasına böl. Döner: üretilen tuğla sayısı.
 func _shatter(d: Destructible) -> int:
 	var size: Vector3 = d.get_meta("block_size")
+	var near_hit := d.hit_point != Vector3.INF
 	var n := Vector3i(maxi(1, roundi(size.x / brick.x)), maxi(1, roundi(size.y / brick.y)), maxi(1, roundi(size.z / brick.z)))
 	var cell := Vector3(size.x / n.x, size.y / n.y, size.z / n.z)
 	var xf := d.global_transform
@@ -230,47 +275,27 @@ func _shatter(d: Destructible) -> int:
 		v = v.normalized() * 4.0 if v.length() > 0.1 else (xf.origin - d.hit_point).normalized() * 4.0
 	var m := cell.x * cell.y * cell.z * density
 	var made := 0
+	var local_hit := xf.affine_inverse() * d.hit_point if near_hit else Vector3.INF
+	var fine_left := FINE_PER_BLOCK
+	var fine_shape := _shape(cell * 0.5)
 	for x in n.x:
 		for y in n.y:
 			for z in n.z:
-				var i := _alloc()
-				if i < 0:
-					break
 				var local := Vector3((x + 0.5) * cell.x, (y + 0.5) * cell.y, (z + 0.5) * cell.z) - size * 0.5
-				var p := xf * local
-				var b := RigidBody3D.new()
-				var cs := CollisionShape3D.new()
-				cs.shape = shape
-				b.add_child(cs)
-				b.mass = m
-				b.physics_material_override = _pm
-				b.collision_layer = 2
-				b.collision_mask = 1 | 2 | 4 | 8 | 16
-				b.set_meta("brick", i)
-				b.set_meta("pool", self)
-				add_child(b)
-				b.global_transform = Transform3D(xf.basis, p)
-				# Dağılma: bloğun hızı + dönüşü + hafif dışa açılma
-				var r := p - xf.origin
-				# Darbe yönündeki hız tuğlalara geçer; ön yüzdekiler daha hızlı (enerji önce onlara)
-				var near := 1.0
-				if d.hit_point != Vector3.INF:
-					near += 3.0 * exp(-p.distance_to(d.hit_point) / 1.8)
-				var push := v * near * randf_range(0.8, 1.3)
-				b.linear_velocity = push + w.cross(r) + r.normalized() * randf_range(0.5, 1.5)
-				b.angular_velocity = w + Vector3(randf_range(-1, 1), randf_range(-1, 1), randf_range(-1, 1))
-				b.sleeping_state_changed.connect(_on_sleep.bind(i))
-				_bodies[i] = b
-				_sizes[i] = cell
-				_prev_v[i] = b.linear_velocity
-				_rest[i] = 0.0
-				_mm.set_instance_custom_data(i, Color(cell.x, cell.y, cell.z, 1.0))
-				_draw(i, b.global_transform)
-				_active[i] = true
-				_order.append(i)
-				made += 1
-	Fx.dust(xf.origin, clampf(size.length() / 4.0, 0.6, 1.8))
-	Fx.rubble(xf.origin, Vector3.UP, 0.8)
+				if near_hit and fine_left >= 8 and local.distance_to(local_hit) < FINE_R:
+					# Darbe bölgesi: hücre 8 küçük tuğlaya dağılır
+					fine_left -= 8
+					for k in 8:
+						var o := Vector3((k & 1) - 0.5, ((k >> 1) & 1) - 0.5, ((k >> 2) & 1) - 0.5) * cell * 0.5
+						if _spawn(xf, local + o, cell * 0.5, fine_shape, m * 0.125, v, w, d) >= 0:
+							made += 1
+				elif _spawn(xf, local, cell, shape, m, v, w, d) >= 0:
+					made += 1
+	var at := d.hit_point if near_hit else xf.origin
+	Fx.dust(at, clampf(size.length() / 4.0, 0.6, 1.8))
+	Fx.bricks(at, v.normalized() if v.length() > 0.5 else Vector3.UP, clampf(size.length() / 6.0, 0.4, 1.0))
+	if xf.origin.y < size.y * 2.0:
+		Fx.debris_mark(Vector3(xf.origin.x, 0, xf.origin.z), size.x + size.z)
 	Sfx.debris(xf.origin, 12.0)
 	if d.building and d.building.has_method("forget"):
 		d.building.forget(d)

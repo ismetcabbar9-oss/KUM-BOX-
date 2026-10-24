@@ -1,4 +1,4 @@
-# Kaya Yuvarla — prototip v0.8
+# Kaya Yuvarla — prototip v0.9
 
 Geliştirme planı: [PLAN.md](PLAN.md) (kademeli aşamalar).
 
@@ -34,6 +34,18 @@ Sapan ve topta sarı noktalar tahmini yörüngeyi gösterir.
 **Yeni mermiler (v0.6):** **Zincirli gülle** (havada ikiye ayrılır, aradaki esnemez zincirle dönerek uçar), **Üçlü testere** (havada ±8° açıyla üç diske ayrılır), **Yapışkan bomba** (değdiği yere yapışır, hızlanan bip sesleriyle 1,8 sn sonra patlar; hareketli gövdeye iğnelenir).
 
 **Engeller:** dönen çelik pervane (kinematik), sallanan yıkım gülle sarkacı (gerçek menteşe), konteyner yığınları, beton bariyerler, tuğla duvar, variller, sandıklar, taşlar.
+
+## v0.9 (Yaşayan Kale — Aşama B: daha gerçek yıkım)
+
+- **Küçük tuğla örgüsü:** Kale duvarları 0,75 × 0,5 × 0,5 m'lik tuğlalardan örülmüş görünür.
+- **Kademeli kırılma:**
+  - Darbe noktasına ~2 m yakın bölge tek tek küçük tuğlalara dağılır ve hızla savrulur.
+  - Uzak kısım harçla tutunmuş 2×2×2'lik tuğla kümeleri hâlinde kopar.
+  - Düşerek yere çarpan blok, çarptığı yüzden ufalanır.
+- **Görsel tuğla kırıntıları:** Her kırılmada fizik maliyeti olmayan yüzlerce küçük taş keseği saçılır, zemine çarpıp seker.
+- **Çatlaklar:** Kırılmayan ama hasar alan taşta hasarla kalınlaşan çatlak çizgileri belirir, yüzeyden kırıntı dökülür.
+- **Moloz izleri:** Yere düşen enkazın altında kalıcı toz/kırıntı lekeleri kalır. Fizikten çıkan tuğlalar 6000'e kadar sabit moloz olarak yerde durur.
+- **Kule çöküşünde dev toz bulutu** (iki dalga).
 
 ## v0.8 (Yaşayan Kale — Aşama A)
 

@@ -41,7 +41,7 @@ otomatik test + ekran görüntüsü + commit + ZIP.
 
 ## Yaşayan Kale planı (v0.8 → v1.0)
 - [x] A: İç içe kale (dış/iç halka, ana kule, hendek, asma köprü, avlu binaları, sancak)
-- [ ] B: Daha küçük tuğla (0,75 m) + görsel tuğla parçacıkları + moloz yığınları + çatlaklar
+- [x] B: Daha küçük tuğla (0,75 m) + görsel tuğla parçacıkları + moloz yığınları + çatlaklar
 - [ ] C: Kalabalık (60–120 figür, mesafeye göre detay), okçular, devriye, işçiler, kaçışma, sesler
 - [ ] D: Mancınık nişan yardımı, kuşatma görevleri + yıldız, yavaş çekim tekrar kamerası, yangın
 

@@ -168,6 +168,7 @@ func finalize() -> void:
 		b.configure(def["kind"], vol * float(d["density"]), 0.5 if d["mat"] == "steel" else 0.8)
 		b.layer = d["layer"]
 		b.hp = vol * float(d["strength"])
+		b.set_meta("hp0", b.hp)
 		b.building = self
 		b.make_intact()
 		b.released.connect(_on_block_released)
@@ -218,6 +219,22 @@ func _compute_neighbors() -> void:
 		for o in found:
 			nbs.append(o.name)
 		b.neighbors = nbs
+
+
+## Çatlak: örgü bloğunun hasar oranı gölgelendiriciye (özel veri w) yazılır; yüzden
+## birkaç taş kırıntısı dökülür.
+func _on_cracked(b: Destructible, point: Vector3) -> void:
+	var info: Array = _instance_of.get(b, [])
+	if info.is_empty():
+		return
+	var d: Dictionary = info[3]
+	if d["mat"] != "masonry":
+		return
+	var hp0: float = b.get_meta("hp0", b.hp)
+	var dmg := clampf((1.0 - b.hp / maxf(hp0, 1.0)) * 1.6, 0.0, 1.0)
+	var size: Vector3 = d["size"]
+	(info[0] as MultiMesh).set_instance_custom_data(info[1], Color(size.x, size.y, size.z, 0.5 + 0.49 * dmg))
+	Fx.bricks(point.lerp(b.global_position, 0.3), (point - b.global_position).normalized(), 0.25)
 
 
 func _on_block_released(b: Destructible) -> void:

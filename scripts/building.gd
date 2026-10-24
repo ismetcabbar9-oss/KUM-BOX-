@@ -122,6 +122,7 @@ func _apply_damage(point: Vector3, energy: float, direction: Vector3, radius: fl
 			spent += absorbed
 			used += absorbed * 0.3  # çatlatmak mermiyi az yavaşlatır
 			cracked += 1
+			_on_cracked(d, point)
 			continue
 		_break_visual()
 		used += d.hp
@@ -145,6 +146,11 @@ func _apply_damage(point: Vector3, energy: float, direction: Vector3, radius: fl
 			Sfx.crash(point, crash_sound)
 		_mark_support_dirty()
 	return used
+
+
+## Kopmayan parça hasar aldı (çatlak görünümü için alt sınıflar kullanır)
+func _on_cracked(_d: Destructible, _point: Vector3) -> void:
+	pass
 
 
 func _break_visual() -> void:

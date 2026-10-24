@@ -619,6 +619,12 @@ func _shots2() -> void:
 	for f in 150:
 		await get_tree().physics_frame
 	await _snap_views([[Vector3(-30, 9, c - 95), Vector3(-35, 4, c - 72)]], "s2_bricks_rest")
+	# Çatlaklar: kırmayan, yalnız hasar veren darbeler
+	for k in 3:
+		Building.strike(get_world_3d(), Vector3(35, 6, c - 74.0), 0.6e6, Vector3(0, 0, 1))
+		for f in 10:
+			await get_tree().physics_frame
+	await _snap_views([[Vector3(38, 8, c - 86), Vector3(35, 6, c - 72)]], "s2_cracks")
 
 
 func _shots() -> void:

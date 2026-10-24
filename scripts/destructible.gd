@@ -199,6 +199,10 @@ func make_splittable_halves(halves: Array, energy_density: float) -> void:
 
 func _try_split(energy: float) -> void:
 	if shatter_pool:
+		if hit_point == Vector3.INF:
+			# Düşerek çarpan blok: çarpma noktası hareket yönündeki yüz (çoğunlukla alt yüz)
+			var dir := linear_velocity.normalized() if linear_velocity.length() > 0.5 else Vector3.DOWN
+			hit_point = global_position + dir * 1.4
 		shatter_pool.request(self)
 		return
 	if _splitting or intact or split_gen >= MAX_GEN or spawned >= max_spawned:
