@@ -39,6 +39,12 @@ otomatik test + ekran görüntüsü + commit + ZIP.
 - [x] 29 asker (kuleler, surlar, avlu).
 - [x] Kale haritasında güçlendirilmiş mancınık rampanın tepesinde.
 
+## Yaşayan Kale planı (v0.8 → v1.0)
+- [x] A: İç içe kale (dış/iç halka, ana kule, hendek, asma köprü, avlu binaları, sancak)
+- [ ] B: Daha küçük tuğla (0,75 m) + görsel tuğla parçacıkları + moloz yığınları + çatlaklar
+- [ ] C: Kalabalık (60–120 figür, mesafeye göre detay), okçular, devriye, işçiler, kaçışma, sesler
+- [ ] D: Mancınık nişan yardımı, kuşatma görevleri + yıldız, yavaş çekim tekrar kamerası, yangın
+
 ## Aşama 5 — Görevler ve haritalar
 - Görev türleri: X atışta Y% yıkım, belirli hedefi düşür, zincirleme çöküş, süre.
 - Yıldız puanı, ilerleme kaydı.

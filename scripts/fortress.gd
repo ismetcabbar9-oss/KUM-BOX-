@@ -1,107 +1,53 @@
 class_name Fortress
 extends BlockStructure
-## Dev taş kale: dört kule (öndeki ikisi kısa, arkadaki ikisi çok daha yüksek), aralarında
-## surlar, ön surda kapı, kule tepelerinde döşeme ve mazgallar.
+## Kesme taş örgü yapı parçası (kale halkası, ana kule, avlu binası). Castle birden çok
+## Fortress'i bir araya getirir; hepsi ortak BrickPool'u kullanır. Parçalara bölmek, destek
+## hesabını (_check_support) binlerce bloktan oluşan tek bir grafik yerine küçük
+## grafiklerde tutar.
 ##
-## Kesme taş örgü ("masonry"): her blok bir Destructible'dır ve Building'in yapısal modelini
+## Kesme taş ("masonry"): her blok bir Destructible'dır ve Building'in yapısal modelini
 ## kullanır (statik dondurulmuş, birikimli hasar, destek grafiği). Kopan blok BrickPool ile
-## duvarda görünen tuğla ızgarasına (1.5 × 1 × 1 m) ayrılır: yıkım iri kütleler değil,
-## tek tek tuğlalar hâlinde olur.
+## duvarda görünen tuğla ızgarasına ayrılır: yıkım iri kütleler değil, tuğlalar hâlinde olur.
 ##
-## Askerler: kule tepelerinde, sur yürüyüş yolunda ve avluda durur (soldier_spots).
+## Kuleler: taban sıralarının (alt 3 sıra) yeterince kopunca kule ağırlığını taşıyamaz ve
+## toptan çöker.
 
-const ROW_H := 3.0
-const THICK := 3.0
-const BLOCK := 4.5
-const BRICK := Vector3(1.5, 1.0, 1.0)
+var row_h := 3.0
+var thick := 3.0
+var block := 4.5
 
-## [yerel konum, bakış açısı (radyan)]
-var soldier_spots: Array = []
-## Kuleler: {"from", "to": blok indeks aralığı, "fallen"}. Taban sıralarının (alt 3 sıra)
-## yeterince kopunca kule ağırlığını taşıyamaz ve toptan çöker.
+## Kuleler: {"from", "to": blok indeks aralığı, "fallen", "center"}
 var _towers: Array = []
 const TOWER_BASE_ROWS := 3
 const TOWER_COLLAPSE := 0.7  # taban sağlamlık oranı bunun altına inerse
 
 
-func setup_castle() -> void:
-	name = "Kale"
+func begin(part_name: String, pool: BrickPool) -> void:
+	name = part_name
 	kind = "concrete"
 	# Taş örgü: oyuğun üstünde 1-2 sıra kemer gibi tutunur, daha yukarısı çöker
 	max_span = 1.6
 	hang_up = 0.6
 	crash_sound = "stone_crash"
-	brick_pool = BrickPool.new()
-	brick_pool.name = "Tuglalar"
-	brick_pool.setup(material("masonry"), BRICK, "stone", 2300.0)
-	add_child(brick_pool)
-	# Yerel koordinat: kale merkezi orijinde, ön yüz -Z (fırlatıcılara bakar)
-	var cx := 52.0
-	var cz := 42.0
-	var front_w := 18.0
-	var back_w := 20.0
-	var front_rows := 9  # 27 m
-	var back_rows := 15  # 45 m
-	var wall_rows := 6  # 18 m
-	for sx in [-1.0, 1.0]:
-		_tower(Vector3(sx * cx, 0, -cz), front_w, front_rows)
-		_tower(Vector3(sx * cx, 0, cz), back_w, back_rows)
-	# Surlar: ön (kapılı), arka, iki yan
-	var fi := cx - front_w * 0.5
-	var bi := cx - back_w * 0.5
-	_wall(Vector3(-fi, 0, -cz), Vector3(fi, 0, -cz), wall_rows, -1.0, 10.0)
-	_wall(Vector3(-bi, 0, cz), Vector3(bi, 0, cz), wall_rows, 1.0)
-	for sx in [-1.0, 1.0]:
-		_wall(Vector3(sx * cx, 0, -cz + front_w * 0.5), Vector3(sx * cx, 0, cz - back_w * 0.5), wall_rows, sx)
-	finalize()
-	_place_soldiers(cx, cz, front_w, back_w, front_rows, back_rows, wall_rows)
+	brick_pool = pool
 
 
-func _place_soldiers(cx: float, cz: float, fw: float, bw: float, fr: int, br: int, wr: int) -> void:
-	var front := PI  # -Z'ye bak (fırlatıcılara)
-	# Kule tepeleri: 3'er asker
-	for sx in [-1.0, 1.0]:
-		var ft := fr * ROW_H + 1.0
-		var bt := br * ROW_H + 1.0
-		for k in 3:
-			var o := (k - 1) * 3.5
-			soldier_spots.append([Vector3(sx * cx + o, ft, -cz - fw * 0.5 + 3.2), front])
-			soldier_spots.append([Vector3(sx * cx + o, bt, cz - bw * 0.5 + 3.2), front])
-	# Ön sur yürüyüş yolu (dişlerin arkasında): 6 asker
-	var wt := wr * ROW_H
-	for k in 6:
-		var x := -30.0 + k * 12.0
-		if absf(x) < 4.0:
-			x += 5.0
-		soldier_spots.append([Vector3(x, wt, -cz + 0.7), front])
-	# Yan surlar: 2'şer
-	for sx in [-1.0, 1.0]:
-		for k in 2:
-			soldier_spots.append([Vector3(sx * (cx - 0.7), wt, -12.0 + k * 22.0), front + sx * 0.5])
-	# Avlu: 7 asker (kapının arkasında ve ortada)
-	var yard := [Vector3(-6, 0, -30), Vector3(6, 0, -30), Vector3(0, 0, -24), Vector3(-18, 0, -10),
-		Vector3(18, 0, -8), Vector3(-8, 0, 8), Vector3(10, 0, 14)]
-	for p: Vector3 in yard:
-		soldier_spots.append([p, front + randf_range(-0.4, 0.4)])
-
-
-## Kare kule: dört duvar, tepede döşeme, döşeme kenarında mazgallar
-func _tower(c: Vector3, w: float, rows: int) -> void:
+## Kare kule: dört duvar, tepede döşeme, döşeme kenarında mazgallar.
+## cross: ortadan geçen iç duvar (geniş kulelerde döşemenin ortasını taşır).
+## Döner: kule tepesinin (döşeme üstü) yüksekliği.
+func tower(c: Vector3, w: float, rows: int, cross := false) -> float:
 	var from := _defs.size()
-	_tower_blocks(c, w, rows)
-	_towers.append({"from": from, "to": _defs.size(), "fallen": false, "center": c})
-
-
-func _tower_blocks(c: Vector3, w: float, rows: int) -> void:
 	var h := w * 0.5
-	var t2 := THICK * 0.5
-	_wall(c + Vector3(-h, 0, -h + t2), c + Vector3(h, 0, -h + t2), rows, 0.0)
-	_wall(c + Vector3(-h, 0, h - t2), c + Vector3(h, 0, h - t2), rows, 0.0)
-	_wall(c + Vector3(-h + t2, 0, -h + THICK), c + Vector3(-h + t2, 0, h - THICK), rows, 0.0)
-	_wall(c + Vector3(h - t2, 0, -h + THICK), c + Vector3(h - t2, 0, h - THICK), rows, 0.0)
+	var t2 := thick * 0.5
+	wall(c + Vector3(-h, 0, -h + t2), c + Vector3(h, 0, -h + t2), rows, 0.0)
+	wall(c + Vector3(-h, 0, h - t2), c + Vector3(h, 0, h - t2), rows, 0.0)
+	wall(c + Vector3(-h + t2, 0, -h + thick), c + Vector3(-h + t2, 0, h - thick), rows, 0.0)
+	wall(c + Vector3(h - t2, 0, -h + thick), c + Vector3(h - t2, 0, h - thick), rows, 0.0)
+	if cross:
+		wall(c + Vector3(0, 0, -h + thick), c + Vector3(0, 0, h - thick), rows, 0.0)
 	# Tepe döşemesi: duvarların üstüne oturur (desteği alttaki duvar sırasından alır)
-	var top := rows * ROW_H
-	var n := maxi(1, roundi(w / BLOCK))
+	var top := rows * row_h
+	var n := maxi(1, roundi(w / block))
 	var cell := w / n
 	for i in n:
 		for j in n:
@@ -115,20 +61,24 @@ func _tower_blocks(c: Vector3, w: float, rows: int) -> void:
 		for s in [-1.0, 1.0]:
 			add_block(c + Vector3(a, top + 1.0 + 0.75, s * (h - 0.5)), Vector3(m, 1.5, 1.0), rows + 1, "masonry")
 			add_block(c + Vector3(s * (h - 0.5), top + 1.0 + 0.75, a), Vector3(1.0, 1.5, m), rows + 1, "masonry")
+	_towers.append({"from": from, "to": _defs.size(), "fallen": false, "center": c})
+	return top + 1.0
 
 
 ## a -> b ekseni boyunca (X ya da Z) duvar; şaşırtmalı örgü, isteğe bağlı kapı.
-## outward: dış yön (+1/-1, duvara dik eksende); 0 = mazgal yok (kule duvarı).
-func _wall(a: Vector3, b: Vector3, rows: int, outward: float, gate_w := 0.0) -> void:
+## outward: dış yön (+1/-1, duvara dik eksende); 0 = mazgal yok.
+func wall(a: Vector3, b: Vector3, rows: int, outward: float, gate_w := 0.0, gate_rows := 3) -> void:
 	var along_x := absf(b.x - a.x) > absf(b.z - a.z)
 	var length := absf((b - a).x if along_x else (b - a).z)
-	var n := maxi(1, roundi(length / BLOCK))
+	if length < 0.3:
+		return
+	var n := maxi(1, roundi(length / block))
 	var bl := length / n
 	var start := minf(a.x, b.x) if along_x else minf(a.z, b.z)
 	var fixed := a.z if along_x else a.x
 	var mid := start + length * 0.5
 	for r in rows:
-		var y := r * ROW_H + ROW_H * 0.5
+		var y := a.y + r * row_h + row_h * 0.5
 		# Tek sıralar yarım blokla başlar (şaşırtmalı)
 		var cuts: Array[float] = [start]
 		var p := start + (bl * 0.5 if r % 2 == 1 else 0.0)
@@ -144,10 +94,10 @@ func _wall(a: Vector3, b: Vector3, rows: int, outward: float, gate_w := 0.0) -> 
 			if c1 - c0 < 0.3:
 				continue
 			var cc := (c0 + c1) * 0.5
-			# Kapı boşluğu: alt 3 sıra
-			if gate_w > 0.0 and r < 3 and absf(cc - mid) < gate_w * 0.5:
+			# Kapı boşluğu: alt gate_rows sıra
+			if gate_w > 0.0 and r < gate_rows and absf(cc - mid) < gate_w * 0.5:
 				continue
-			var size := Vector3(c1 - c0, ROW_H, THICK) if along_x else Vector3(THICK, ROW_H, c1 - c0)
+			var size := Vector3(c1 - c0, row_h, thick) if along_x else Vector3(thick, row_h, c1 - c0)
 			var pos := Vector3(cc, y, fixed) if along_x else Vector3(fixed, y, cc)
 			add_block(pos, size, r, "masonry")
 	if outward != 0.0:
@@ -155,13 +105,76 @@ func _wall(a: Vector3, b: Vector3, rows: int, outward: float, gate_w := 0.0) -> 
 		var m := 1.5
 		var count := int(length / (m * 2.0))
 		var off := (length - (count * 2 - 1) * m) * 0.5
-		var edge := fixed + outward * (THICK * 0.5 - 0.5)
+		var edge := fixed + outward * (thick * 0.5 - 0.5)
 		for i in count:
 			var cc := start + off + m * 0.5 + i * m * 2.0
 			var size := Vector3(m, 1.5, 1.0) if along_x else Vector3(1.0, 1.5, m)
-			var y := rows * ROW_H + 0.75
+			var y := a.y + rows * row_h + 0.75
 			var pos := Vector3(cc, y, edge) if along_x else Vector3(edge, y, cc)
 			add_block(pos, size, rows, "masonry")
+
+
+## Avlu binası: taş duvarlar (kapı boşluğuyla) + ahşap beşik çatı (mahya uzun kenar boyunca).
+## size: x = X genişliği, z = Z derinliği. door: kapının olduğu yüz (-Z: 0, +Z: 1, -X: 2, +X: 3)
+func house(c: Vector3, size: Vector3, rows: int, door: int) -> void:
+	var hx := size.x * 0.5
+	var hz := size.z * 0.5
+	var t2 := thick * 0.5
+	var doors := [0.0, 0.0, 0.0, 0.0]
+	doors[door] = 2.4
+	wall(c + Vector3(-hx, 0, -hz + t2), c + Vector3(hx, 0, -hz + t2), rows, 0.0, doors[0], 1)
+	wall(c + Vector3(-hx, 0, hz - t2), c + Vector3(hx, 0, hz - t2), rows, 0.0, doors[1], 1)
+	wall(c + Vector3(-hx + t2, 0, -hz + thick), c + Vector3(-hx + t2, 0, hz - thick), rows, 0.0, doors[2], 1)
+	wall(c + Vector3(hx - t2, 0, -hz + thick), c + Vector3(hx - t2, 0, hz - thick), rows, 0.0, doors[3], 1)
+	roof(c + Vector3(0, rows * row_h, 0), size, rows)
+
+
+## Ahşap beşik çatı: iki eğimli kalas sırası (30°) + mahya kirişi
+func roof(base: Vector3, size: Vector3, layer: int) -> void:
+	var along_x := size.x >= size.z
+	var length := (size.x if along_x else size.z) + 1.0
+	var span := (size.z if along_x else size.x) * 0.5 + 0.6
+	var pitch := deg_to_rad(30.0)
+	var slope := span / cos(pitch)
+	var n := maxi(1, roundi(length / 1.5))
+	var pw := length / n
+	for i in n:
+		var u := -length * 0.5 + pw * (i + 0.5)
+		for s in [-1.0, 1.0]:
+			var d := span * 0.5
+			var y := base.y + 0.15 + tan(pitch) * (span - d)
+			var basis: Basis
+			var pos: Vector3
+			var bsize: Vector3
+			if along_x:
+				basis = Basis(Vector3.RIGHT, s * pitch)
+				pos = Vector3(base.x + u, y, base.z + s * d)
+				bsize = Vector3(pw - 0.04, 0.22, slope)
+			else:
+				basis = Basis(Vector3.BACK, -s * pitch)
+				pos = Vector3(base.x + s * d, y, base.z + u)
+				bsize = Vector3(slope, 0.22, pw - 0.04)
+			add_block(pos, bsize, layer, "wood", {"basis": basis})
+	var ridge_y := base.y + 0.15 + tan(pitch) * span + 0.1
+	add_block(Vector3(base.x, ridge_y, base.z), Vector3(length, 0.3, 0.3) if along_x else Vector3(0.3, 0.3, length), layer + 1, "wood")
+
+
+## Ahşap sundurma (ahır): direkler + çatı, duvarsız
+func shed(c: Vector3, size: Vector3, height: float) -> void:
+	var hx := size.x * 0.5
+	var hz := size.z * 0.5
+	var nx := maxi(1, roundi(size.x / 4.0))
+	var nz := maxi(1, roundi(size.z / 4.0))
+	for i in nx + 1:
+		for j in nz + 1:
+			if i > 0 and i < nx and j > 0 and j < nz:
+				continue  # yalnız çevre direkleri
+			add_block(c + Vector3(-hx + size.x * i / nx, height * 0.5, -hz + size.z * j / nz), Vector3(0.4, height, 0.4), 0, "wood")
+	# Kiriş çerçevesi (direklerin üstünde) + çatı
+	for s in [-1.0, 1.0]:
+		add_block(c + Vector3(0, height + 0.15, s * hz), Vector3(size.x + 0.4, 0.3, 0.3), 1, "wood")
+		add_block(c + Vector3(s * hx, height + 0.15, 0), Vector3(0.3, 0.3, size.z - 0.3), 1, "wood")
+	roof(c + Vector3(0, height + 0.3, 0), size, 2)
 
 
 func _check_support() -> void:

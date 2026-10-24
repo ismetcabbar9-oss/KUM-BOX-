@@ -37,10 +37,12 @@ var _stat_timer := 0.0
 var _destructibles: Array[Node] = []
 var _buildings: Array[Building] = []
 var crew: Crew
+var castle: Castle
 var _soldiers: Array[Soldier] = []
 
 
 func _ready() -> void:
+	var t_start := Time.get_ticks_msec()
 	randomize()
 	Destructible.spawned = 0
 	_build_environment()
@@ -92,6 +94,7 @@ func _ready() -> void:
 	# Rampa tepesindeki mancınıkla başla
 	_select_launcher(1)
 	if "--autotest" in args:
+		print("Sahne kurulumu: %d ms" % (Time.get_ticks_msec() - t_start))
 		_autotest()
 
 
@@ -214,19 +217,22 @@ func _add_launcher(l: Launcher, pos: Vector3) -> void:
 	launchers.append(l)
 
 
-## Dev kale (+ askerler)
+## İç içe dev kale + askerler
 func _build_castle() -> void:
 	var z0 := RAMP_FLAT + RAMP_SLOPE + RAMP_RUNOUT
-	var f := Fortress.new()
-	f.setup_castle()
-	f.position = Vector3(0, 0, z0 + 70.0)
-	add_child(f)
-	_buildings.append(f)
-	for spot in f.soldier_spots:
+	castle = Castle.new()
+	castle.position = Vector3(0, 0, z0 + 100.0)
+	add_child(castle)
+	castle.build()
+	for p in castle.parts:
+		_buildings.append(p)
+	Projectile.water_zones = castle.world_water()
+	for spot in castle.soldier_spots:
 		var s := Soldier.new()
 		s.setup()
+		s.role = spot[2]
 		add_child(s)
-		s.global_transform = Transform3D(Basis(Vector3.UP, spot[1]), f.to_global(spot[0]))
+		s.global_transform = Transform3D(Basis(Vector3.UP, spot[1]), castle.to_global(spot[0]))
 		_soldiers.append(s)
 
 
@@ -236,7 +242,7 @@ func _scatter_trees() -> void:
 	rng.seed = 41
 	for i in 26:
 		var side := -1.0 if i % 2 == 0 else 1.0
-		var pos := Vector3(side * rng.randf_range(62.0, 110.0), 0, rng.randf_range(-20.0, 340.0))
+		var pos := Vector3(side * rng.randf_range(125.0, 185.0), 0, rng.randf_range(-20.0, 420.0))
 		var body := StaticBody3D.new()
 		var visual := Models.instance("pine_b")
 		body.add_child(visual)
@@ -262,7 +268,7 @@ func _scatter_decor() -> void:
 	for i in 18:
 		var side := -1.0 if i % 2 == 0 else 1.0
 		var size := rng.randf_range(2.0, 7.0)
-		var pos := Vector3(side * rng.randf_range(60.0, 95.0), 0, rng.randf_range(-10.0, 330.0))
+		var pos := Vector3(side * rng.randf_range(120.0, 170.0), 0, rng.randf_range(-10.0, 420.0))
 		var body := StaticBody3D.new()
 		var mi := MeshInstance3D.new()
 		mi.mesh = load("res://assets/rocks/%s.res" % meshes[i % meshes.size()])
@@ -437,11 +443,22 @@ func _autotest() -> void:
 	for f in 90:
 		await get_tree().physics_frame
 	print("Fırlatmadan önce yerinden oynayan: ", _count_displaced())
+	for part in castle.parts:
+		print("  bölüm %s: %d blok" % [part.name, part.chunks.size()])
 	for m in crew.men:
 		print("  ekip: ", m.global_position, " görünür=", m.visible, " mod=", m.mode)
 	for s in _soldiers:
 		if not s.alive:
 			print("  ölü asker: ", s.global_position)
+	if "--drop-bridge" in args:
+		castle.bridge.drop(Vector3.ZERO)
+		for k in 8:
+			for f in 30:
+				await get_tree().physics_frame
+			var bb := castle.bridge.body
+			print("köprü açı=%.0f° uç=%s" % [rad_to_deg(castle.bridge._angle), bb.to_global(Vector3(0, 0, 8)).round()])
+		get_tree().quit()
+		return
 	if "--shots2" in args:
 		await _shots2()
 		get_tree().quit()
@@ -500,6 +517,7 @@ func _autotest() -> void:
 			i + 1, pos, spd, _count_displaced(), released, broken, (now - sec_t) / 1000.0])
 		sec_t = now
 	print("Azami hız: %.0f km/sa" % max_speed)
+	print("Asma köprü: %s   sancak: %s" % ["DÜŞTÜ" if castle.bridge._down else "kalkık", "DÜŞTÜ" if castle.flag.down else "ayakta"])
 	print("TOPLAM işlem süresi (20 sn simülasyon): %.2f sn" % ((Time.get_ticks_usec() - t0) / 1e6))
 	get_tree().quit()
 
@@ -513,12 +531,13 @@ func _arg(prefix: String, default: String) -> String:
 
 ## Yapay kuşatma: kalenin dış yüzündeki rastgele alçak bloklara E enerjili darbe
 func _siege_synth(n: int, energy: float) -> void:
-	var f: Building = _buildings[0]
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 3
-	var center := f.global_position + Vector3.UP * 5.0
+	var center := castle.global_position + Vector3.UP * 5.0
 	for i in n:
-		var cands := f.chunks.filter(func(c: Destructible) -> bool: return c.intact and c.layer <= 3)
+		var cands: Array = []
+		for part in castle.parts:
+			cands.append_array(part.chunks.filter(func(c: Destructible) -> bool: return c.intact and c.layer <= 3))
 		if cands.is_empty():
 			break
 		# Dışa yakın olanlardan seç (merkeze en uzak %40)
@@ -531,7 +550,7 @@ func _siege_synth(n: int, energy: float) -> void:
 		for k in 60 * 4:
 			await get_tree().physics_frame
 		var alive := _soldiers.filter(func(s: Soldier) -> bool: return s.alive).size()
-		print("darbe %2d  sağlam blok %%%d  asker %d  işlem %d ms/4sn  %s" % [i + 1, roundi(f.intact_ratio() * 100.0), alive, (Time.get_ticks_usec() - t0) / 1000, (f as Fortress).brick_pool.stats()])
+		print("darbe %2d  sağlam blok %%%d  asker %d  işlem %d ms/4sn  %s" % [i + 1, roundi(castle.intact_ratio() * 100.0), alive, (Time.get_ticks_usec() - t0) / 1000, castle.pool.stats()])
 
 
 ## Kuşatma testi: N atış, her atıştan sonra kalenin sağlam blok oranı
@@ -561,13 +580,13 @@ func _siege(n: int) -> void:
 			await get_tree().physics_frame
 			if "--trace" in OS.get_cmdline_user_args() and is_instance_valid(current) and (f % 60 == 0 or (f % 6 == 0 and current.global_position.z > 170.0 and f < 700)):
 				print("   %ds mermi=%s v=%.0f km/sa" % [f / 60, current.global_position.round(), current.speed_kmh()])
-		var b: Building = _buildings[0]
 		var awake := 0
-		for c in b.chunks:
-			if not c.intact and not c.freeze:
-				awake += 1
+		for part in castle.parts:
+			for c in part.chunks:
+				if not c.intact and not c.freeze:
+					awake += 1
 		var alive := _soldiers.filter(func(s: Soldier) -> bool: return s.alive).size()
-		print("atış %2d  sağlam blok %%%d  hareketli blok=%d  asker %d" % [i + 1, roundi(b.intact_ratio() * 100.0), awake, alive])
+		print("atış %2d  sağlam blok %%%d  hareketli blok=%d  asker %d" % [i + 1, roundi(castle.intact_ratio() * 100.0), awake, alive])
 	print("TOPLAM işlem: %.1f sn (%d atış × 14 sn)" % [(Time.get_ticks_usec() - t0) / 1e6, n])
 
 
@@ -591,42 +610,43 @@ func _shots2() -> void:
 	for k in 24:
 		await get_tree().physics_frame
 	await _snap_views([[Vector3(9, 59.8, 5.5), Vector3(0, 56.0, 6.5)]], "s2_ramp_push")
-	var c := z0 + 70.0
+	var c := castle.global_position.z
 	for k in 2:
-		Building.strike(get_world_3d(), Vector3(-25, 5, c - 43.5), 7.0e6, Vector3(0, 0, 1))
+		Building.strike(get_world_3d(), Vector3(-35, 5, c - 73.5), 7.0e6, Vector3(0, 0, 1))
 		for f in 20:
 			await get_tree().physics_frame
-	await _snap_views([[Vector3(-20, 9, c - 62), Vector3(-25, 4, c - 42)]], "s2_bricks_fly")
+	await _snap_views([[Vector3(-30, 9, c - 95), Vector3(-35, 4, c - 72)]], "s2_bricks_fly")
 	for f in 150:
 		await get_tree().physics_frame
-	await _snap_views([[Vector3(-20, 9, c - 62), Vector3(-25, 4, c - 42)]], "s2_bricks_rest")
+	await _snap_views([[Vector3(-30, 9, c - 95), Vector3(-35, 4, c - 72)]], "s2_bricks_rest")
 
 
 func _shots() -> void:
-	var z0 := RAMP_FLAT + RAMP_SLOPE + RAMP_RUNOUT
-	var c := z0 + 70.0
+	var c := castle.global_position.z
 	var cviews := [
-		[Vector3(-120, 55, c - 110), Vector3(0, 15, c)],
-		[Vector3(0, 72, -48), Vector3(0, 25, c)],
-		[Vector3(-34, 36, c - 70), Vector3(-52, 28, c - 47)],
-		[Vector3(9, 58.5, -16), Vector3(0, 56, -26)],
-		[Vector3(30, 8, c - 70), Vector3(0, 6, c - 42)],
+		[Vector3(-175, 85, c - 175), Vector3(0, 15, c)],
+		[Vector3(0, 75, -48), Vector3(0, 30, c)],
+		[Vector3(26, 12, c - 118), Vector3(0, 9, c - 78)],
+		[Vector3(34, 74, c - 14), Vector3(0, 62, c + 20)],
+		[Vector3(-28, 30, c - 82), Vector3(-56, 3, c - 42)],
+		[Vector3(46, 44, c - 58), Vector3(0, 18, c - 4)],
 	]
 	await _snap_views(cviews, "shot_castle")
 	_select_launcher(0)
 	await get_tree().process_frame
-	await _snap_views([[Vector3(5, 58, 15), Vector3(0, 56, 4)]], "shot_ramp_crew")
-	launcher.fire()
-	for k in 30:
+	await _snap_views([[Vector3(9, 59.8, 5), Vector3(0, 56.0, 6)]], "shot_ramp_crew")
+	castle.bridge.drop(Vector3.ZERO)
+	for k in 150:
 		await get_tree().physics_frame
-	await _snap_views([[Vector3(6, 58, 14), Vector3(0, 56, 6)]], "shot_ramp_push")
-	var f: Building = _buildings[0]
+	await _snap_views([cviews[2]], "shot_bridge_down")
+	var front: Array = castle.parts[0].chunks.filter(func(ch: Destructible) -> bool: return ch.intact and ch.layer <= 2 and ch.global_position.z < c - 70.0)
 	for i in 8:
-		var cands := f.chunks.filter(func(ch: Destructible) -> bool: return ch.intact and ch.layer <= 2 and ch.global_position.z < f.global_position.z - 30.0)
-		var t: Destructible = cands[(i * 37) % cands.size()]
+		var t: Destructible = front[(i * 37) % front.size()]
+		if not is_instance_valid(t):
+			continue
 		Building.strike(get_world_3d(), t.global_position + Vector3(0, 0, -1.5), 7.0e6, Vector3(0, 0, 1))
 		for k in 20:
 			await get_tree().physics_frame
 	for k in 120:
 		await get_tree().physics_frame
-	await _snap_views([cviews[0], cviews[4], [Vector3(-30, 12, c - 75), Vector3(-45, 4, c - 50)]], "shot_castle_hit")
+	await _snap_views([cviews[0], cviews[2]], "shot_castle_hit")

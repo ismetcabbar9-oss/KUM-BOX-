@@ -1,4 +1,4 @@
-# Kaya Yuvarla — prototip v0.7.1
+# Kaya Yuvarla — prototip v0.8
 
 Geliştirme planı: [PLAN.md](PLAN.md) (kademeli aşamalar).
 
@@ -34,6 +34,20 @@ Sapan ve topta sarı noktalar tahmini yörüngeyi gösterir.
 **Yeni mermiler (v0.6):** **Zincirli gülle** (havada ikiye ayrılır, aradaki esnemez zincirle dönerek uçar), **Üçlü testere** (havada ±8° açıyla üç diske ayrılır), **Yapışkan bomba** (değdiği yere yapışır, hızlanan bip sesleriyle 1,8 sn sonra patlar; hareketli gövdeye iğnelenir).
 
 **Engeller:** dönen çelik pervane (kinematik), sallanan yıkım gülle sarkacı (gerçek menteşe), konteyner yığınları, beton bariyerler, tuğla duvar, variller, sandıklar, taşlar.
+
+## v0.8 (Yaşayan Kale — Aşama A)
+
+- **İç içe (konsantrik) kale**, ~2,5 kat alan, ~4000 blok:
+  - **Dış halka:** 4 köşe kulesi (24 m), 2 yan kule, iki kuleli kapı yapısı (27 m), 15 m surlar.
+  - **Hendek:** Sığ su; içinden geçen mermi yavaşlar, su sıçrar.
+  - **Asma köprü:** Kapının önünde kalkık durur. Zincirlerin bağlı olduğu taş koparsa ya da köprüye ağır bir cisim çarparsa zincirler kopar ve köprü menteşesi üstünde hendeğe devrilir. Altında kaya varsa üstüne yaslanır.
+  - **Dış avlu:** Kışla, bacalı demirhane, ahır (ahşap sundurma), depo, kuyu. Ahşap beşik çatılar.
+  - **İç halka:** 24 m surlar, 36 m'lik 4 kule, iç kapı. İç avluda salon.
+  - **Ana kule:** 60 m, iç bölme duvarlı. Tepesinde komutan, muhafızlar ve dalgalanan sancak; altındaki taş koparsa sancak düşer.
+- **47 asker:** Kule tepelerinde, surlarda, avlularda ve ana kulede.
+- **Teknik:**
+  - Kale ayrı bölümlerden oluşur (destek hesabı küçük grafiklerde), hepsi tek tuğla havuzunu paylaşır.
+  - Denge: isabetli ~9 MJ'lik darbelerle 30 darbede kalenin ~%31'i yıkıldı (çoğu dış halka). İç halka ve ana kule ayrı hedefler.
 
 ## v0.7.1
 

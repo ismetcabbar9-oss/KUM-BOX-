@@ -26,6 +26,8 @@ const CHAIN_LEN := 7.0
 const STICKY_FUSE := 1.8
 
 static var _hull_cache := {}
+## Sığ su bölgeleri (hendek): içinden geçen mermi yavaşlar, su sıçrar
+static var water_zones: Array[AABB] = []
 
 var ammo := "granite"
 var radius := 1.0
@@ -50,6 +52,7 @@ var _stuck := false
 var _fuse := 0.0
 var _beep_t := 0.0
 var _glow: StandardMaterial3D
+var _in_water := false
 
 
 ## r: yarıçap (m). rolling: rampada yuvarlanacaksa küre çarpışma kullanılır.
@@ -301,6 +304,7 @@ func _physics_process(delta: float) -> void:
 		linear_damp = lerpf(0.3, 0.01, k) if _touching else 0.01
 	if spd < 0.3 and _age > 3.0:
 		can_sleep = true
+	_water(v)
 	_update_loop(delta)
 
 	# Öngörülü bina darbesi
@@ -328,6 +332,22 @@ func _physics_process(delta: float) -> void:
 		Sfx.impact(kind, p, dv * 3.0)
 		Fx.dust(p, clampf(dv * radius * 0.5, 0.5, 2.5))
 		Fx.shake(clampf(dv * radius * 0.12 * sqrt(mass / 20000.0), 0.0, 1.0))
+
+
+func _water(v: Vector3) -> void:
+	var wet := false
+	for z in water_zones:
+		if z.has_point(global_position - Vector3.UP * radius * 0.5):
+			wet = true
+			break
+	if wet and not _in_water and v.length() > 2.0:
+		Fx.dust(global_position, clampf(radius * 1.5, 0.8, 3.0))
+		Sfx.impact("debris", global_position, 8.0)
+	_in_water = wet
+	if wet:
+		# Suyun direnci: hızla artan sürükleme
+		linear_damp = maxf(linear_damp, 0.12)
+		angular_damp = maxf(angular_damp, 0.25)
 
 
 func _update_loop(delta: float) -> void:

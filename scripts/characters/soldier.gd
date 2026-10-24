@@ -7,6 +7,8 @@ extends RigidBody3D
 const HEIGHT := 1.8
 
 var alive := true
+## "guard" / "commander"
+var role := "guard"
 var _anim: AnimationPlayer
 var _rig: RigPose
 var _poll := 0.0
