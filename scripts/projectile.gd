@@ -254,8 +254,8 @@ func _build_fire(r: float, density: float) -> void:
 	mat.albedo_color = Color(0.12, 0.08, 0.05)
 	mat.roughness = 0.9
 	mat.emission_enabled = true
-	mat.emission = Color(1.0, 0.4, 0.08)
-	mat.emission_energy_multiplier = 1.6
+	mat.emission = Color(1.0, 0.3, 0.04)
+	mat.emission_energy_multiplier = 0.7
 	sm.material = mat
 	var mi := MeshInstance3D.new()
 	mi.mesh = sm

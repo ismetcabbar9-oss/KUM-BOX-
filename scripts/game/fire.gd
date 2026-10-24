@@ -149,6 +149,10 @@ func ground_fire(point: Vector3, life := 14.0) -> void:
 	var hit := space.intersect_ray(rq)
 	if not hit.is_empty():
 		point = hit["position"]
+	for z in Projectile.water_zones:
+		if z.has_point(point + Vector3.UP * 0.3):
+			Fx.dust(point, 1.2)  # suya düştü: söner, buhar
+			return
 	for g: Dictionary in _ground:
 		if (g["node"] as Node3D).global_position.distance_to(point) < GROUND_R * 0.8:
 			g["life"] = maxf(g["life"], g["t"] + life)  # aynı yere tekrar: daha uzun yanar
@@ -171,6 +175,9 @@ func ground_fire(point: Vector3, life := 14.0) -> void:
 	if entry["fx"] >= 0:
 		var i: int = entry["fx"]
 		_fx_owner[i] = node
+		# Yer yangını: daha geniş alev öbeği
+		_fx[i].scale = Vector3.ONE * 1.8
+		_smoke[i].scale = Vector3.ONE * 1.5
 		_fx[i].emitting = true
 		_smoke[i].emitting = true
 	_ground.append(entry)
@@ -360,6 +367,8 @@ func _drop(d) -> void:
 
 
 func _release_fx(i: int) -> void:
+	_fx[i].scale = Vector3.ONE
+	_smoke[i].scale = Vector3.ONE
 	_fx[i].emitting = false
 	_smoke[i].emitting = false
 	_fx_owner[i] = null
