@@ -9,20 +9,21 @@ extends Node3D
 ##    bağlı). Tavan dolunca en eski duran tuğlalar fizikten çıkarılıp sabit moloz
 ##    olarak çizilmeye devam eder.
 
-const SPAWN_PER_FRAME := 160
+const SPAWN_PER_FRAME := 60
 ## Kademeli kırılma: darbe noktasına FINE_R'den yakın tuğla hücreleri 2×2×2 küçük tuğlaya
-## (0.75 × 0.5 × 0.5 m) ayrılır; uzak kısım orta tuğla (harçla tutunmuş küme) kalır.
-const FINE_R := 2.2
-const FINE_PER_BLOCK := 64
+## (~1 × 0.75 × 0.75 m) ayrılır; uzak kısım orta tuğla (harçla tutunmuş küme) kalır.
+## Hissettirecek kadar: blok başına en çok 2 hücre ince kırılır.
+const FINE_R := 2.0
+const FINE_PER_BLOCK := 16
 const REST_FREEZE := 1.2
 
-const CAP := 1500
+const CAP := 700
 ## Fizikten çıkarılmış, yerde kalan moloz tuğlaları (çarpışmasız, tek çizim)
-const RUBBLE_CAP := 6000
+const RUBBLE_CAP := 2500
 ## Aynı anda fizikte tutulan tuğla tavanı (grafik kalitesine göre, ≤ CAP)
-static var limit := 1500
+static var limit := 700
 ## Aynı anda hareket eden tuğla tavanı: büyük çöküşte aşılırsa bloklar bütün kalır
-static var active_limit := 450
+static var active_limit := 220
 
 var brick := Vector3(1.5, 1.0, 1.0)
 var material: Material

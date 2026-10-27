@@ -1,10 +1,9 @@
 shader_type spatial;
 // Tek düzlem zemin: iki ölçekte doku + gürültü ile tekrar kırma (arazi mesh'i gerektirmez).
+// Stilize: yalnız renk dokusu (normal/AO dokusu yok), sabit pürüz.
 render_mode cull_back;
 
 uniform sampler2D albedo_tex : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
-uniform sampler2D normal_tex : hint_normal, filter_linear_mipmap_anisotropic, repeat_enable;
-uniform sampler2D arm_tex : hint_default_white, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2D variation_tex : hint_default_white, filter_linear_mipmap, repeat_enable;
 uniform float tile = 0.12;
 uniform float macro_tile = 0.0035;
@@ -25,8 +24,5 @@ void fragment() {
 	float m = smoothstep(0.35, 0.65, v);
 	vec3 c = mix(texture(albedo_tex, uv).rgb, texture(albedo_tex, uv2).rgb, m);
 	ALBEDO = c * mix(tint_a, tint_b, smoothstep(0.2, 0.8, texture(variation_tex, world_pos.xz * macro_tile * 0.31).r));
-	vec3 arm = mix(texture(arm_tex, uv).rgb, texture(arm_tex, uv2).rgb, m);
-	AO = arm.r;
-	ROUGHNESS = arm.g;
-	NORMAL_MAP = mix(texture(normal_tex, uv).rgb, texture(normal_tex, uv2).rgb, m);
+	ROUGHNESS = 0.95;
 }

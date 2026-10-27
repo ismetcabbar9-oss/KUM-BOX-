@@ -17,7 +17,7 @@ signal tower_fallen(pos: Vector3)
 
 var row_h := 3.0
 var thick := 3.0
-var block := 4.5
+var block := 6.5
 
 ## Kuleler: {"from", "to": blok indeks aralığı, "fallen", "center"}
 var _towers: Array = []
@@ -56,7 +56,7 @@ func tower(c: Vector3, w: float, rows: int, cross := false) -> float:
 		for j in n:
 			add_block(c + Vector3(-h + cell * (i + 0.5), top + 0.5, -h + cell * (j + 0.5)), Vector3(cell, 1.0, cell), rows, "masonry")
 	# Mazgallar: döşeme kenarında
-	var m := 1.5
+	var m := 2.0
 	var count := int(w / (m * 2.0))
 	var off := (w - (count * 2 - 1) * m) * 0.5
 	for i in count:
@@ -105,7 +105,7 @@ func wall(a: Vector3, b: Vector3, rows: int, outward: float, gate_w := 0.0, gate
 			add_block(pos, size, r, "masonry")
 	if outward != 0.0:
 		# Mazgal dişleri: dış kenarda, aralıklı
-		var m := 1.5
+		var m := 2.0
 		var count := int(length / (m * 2.0))
 		var off := (length - (count * 2 - 1) * m) * 0.5
 		var edge := fixed + outward * (thick * 0.5 - 0.5)

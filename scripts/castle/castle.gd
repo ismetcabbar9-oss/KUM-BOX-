@@ -38,7 +38,7 @@ func build() -> void:
 	name = "Kale"
 	pool = BrickPool.new()
 	pool.name = "Tuglalar"
-	pool.setup(BlockStructure.material("masonry"), Vector3(1.5, 1.0, 1.0), "stone", 2300.0)
+	pool.setup(BlockStructure.material("masonry"), Vector3(2.25, 1.5, 1.5), "stone", 2300.0)
 	add_child(pool)
 	_outer()
 	_inner()
@@ -119,10 +119,10 @@ func _outer() -> void:
 		for sz in [-1.0, 1.0]:
 			var c := Vector3(sx * OX, 0, sz * OZ)
 			var top := f.tower(c, corner_w, corner_rows)
-			_tower_guards(c, corner_w, top, 2, "archer" if sz < 0.0 else "guard")
+			if sz < 0.0:
+				_tower_guards(c, corner_w, top, 1, "archer")
 		var mc := Vector3(sx * OX, 0, 0)
-		var mt := f.tower(mc, mid_w, 7)
-		_tower_guards(mc, mid_w, mt, 2)
+		f.tower(mc, mid_w, 7)
 		var gc := Vector3(sx * gx, 0, -OZ)
 		var gt := f.tower(gc, gate_w, 9)
 		_tower_guards(gc, gate_w, gt, 2, "archer")
@@ -131,10 +131,8 @@ func _outer() -> void:
 	# Ön sur: iki parça + kapı üstü (kapı kulelerinin arasında, 8 sıra, alt 3 sıra kapı)
 	for sx in [-1.0, 1.0]:
 		f.wall(Vector3(sx * ci, 0, -OZ), Vector3(sx * gi, 0, -OZ), rows, -1.0)
-		_wall_guards(-OZ, sx * (gi + 8.0), sx * (ci - 8.0), rows * f.row_h, 2, 1.0, "archer")
-		# Sur devriyesi
+		# Ön sur devriyesi
 		_route([Vector3(sx * (ci - 2.0), rows * f.row_h, -OZ + 0.7), Vector3(sx * (gi + 2.0), rows * f.row_h, -OZ + 0.7)], false, "soldier", "patrol", 1)
-		_route([Vector3(sx * (OX - 0.7), rows * f.row_h, -OZ + corner_w * 0.5 + 2.0), Vector3(sx * (OX - 0.7), rows * f.row_h, -mid_w * 0.5 - 2.0)], false, "soldier", "patrol", 1)
 	f.wall(Vector3(-(gx - gate_w * 0.5), 0, -OZ), Vector3(gx - gate_w * 0.5, 0, -OZ), 8, -1.0, 10.0, 3)
 	# Arka sur
 	f.wall(Vector3(-ci, 0, OZ), Vector3(ci, 0, OZ), rows, 1.0)
@@ -154,13 +152,9 @@ func _inner() -> void:
 			var c := IC + Vector3(sx * IX, 0, sz * IZ)
 			var top := f.tower(c, w, trows)
 			if sz < 0.0:
-				_tower_guards(c, w, top, 2, "archer")
+				_tower_guards(c, w, top, 1, "archer")
 	var ci := IX - w * 0.5
 	f.wall(IC + Vector3(-ci, 0, -IZ), IC + Vector3(ci, 0, -IZ), rows, -1.0, 8.0, 3)
-	_wall_guards(IC.z - IZ, -ci + 4.0, -6.0, rows * f.row_h, 1, 1.0)
-	_wall_guards(IC.z - IZ, 6.0, ci - 4.0, rows * f.row_h, 1, 1.0)
-	for sx in [-1.0, 1.0]:
-		_route([IC + Vector3(sx * (ci - 2.0), rows * f.row_h, -IZ + 0.7), IC + Vector3(sx * 7.0, rows * f.row_h, -IZ + 0.7)], false, "soldier", "patrol", 1)
 	f.wall(IC + Vector3(-ci, 0, IZ), IC + Vector3(ci, 0, IZ), rows, 1.0)
 	for sx in [-1.0, 1.0]:
 		f.wall(IC + Vector3(sx * IX, 0, -IZ + w * 0.5), IC + Vector3(sx * IX, 0, IZ - w * 0.5), rows, sx)
@@ -172,7 +166,7 @@ func _keep() -> void:
 	var top := f.tower(KEEP, w, 20, true)  # 60 m
 	# Komutan + muhafızlar
 	soldier_spots.append([KEEP + Vector3(0, top, -w * 0.5 + 3.0), PI, "commander", "soldier"])
-	for o in [-6.0, -3.0, 3.0, 6.0]:
+	for o in [-4.0, 4.0]:
 		soldier_spots.append([KEEP + Vector3(o, top, -w * 0.5 + 3.5), PI, "guard", "soldier"])
 
 
@@ -180,7 +174,7 @@ func _keep() -> void:
 func _bailey() -> void:
 	var b := _part("Avlu")
 	b.thick = 1.0
-	b.block = 3.0
+	b.block = 4.0
 	b.house(Vector3(-56, 0, -42), Vector3(22, 0, 10), 2, 1)  # kışla
 	b.house(Vector3(58, 0, -44), Vector3(12, 0, 9), 2, 2)  # demirhane
 	# Demirhane bacası: binanın dış yüzüne bitişik, yerden yükselir
@@ -198,30 +192,21 @@ func _bailey() -> void:
 		soldier_spots.append([p, PI, "guard", "soldier"])
 	# Avlu yürüyüşleri: ön avlu halkası, yan koridorlar, iç avlu
 	var ring := [Vector3(-40, 0, -62), Vector3(40, 0, -62), Vector3(40, 0, -30), Vector3(-40, 0, -30)]
-	_route(ring, true, "soldier", "walker", 3)
-	_route(ring, true, "peasant", "walker", 5)
-	_route([Vector3(-77, 0, -25), Vector3(-77, 0, 52)], false, "peasant", "walker", 2)
-	_route([Vector3(78, 0, -25), Vector3(78, 0, 52)], false, "peasant", "walker", 1)
-	_route([Vector3(78, 0, 52), Vector3(78, 0, -25)], false, "soldier", "walker", 1)
+	_route(ring, true, "soldier", "walker", 1)
+	_route(ring, true, "peasant", "walker", 2)
 	var inner_ring := [IC + Vector3(-30, 0, -29), IC + Vector3(15, 0, -29), IC + Vector3(15, 0, -12), IC + Vector3(-30, 0, -12)]
-	_route(inner_ring, true, "peasant", "walker", 4)
-	_route(inner_ring, true, "soldier", "walker", 1)
+	_route(inner_ring, true, "peasant", "walker", 1)
 	# İş başındakiler
 	work_spots.append([Vector3(50.6, 0, -44), PI * 0.5, "swing", true, "peasant"])  # demirci, örs başında
 	work_spots.append([Vector3(-59.4, 0, 28), -PI * 0.5, "swing", true, "peasant"])  # odun kesen
-	work_spots.append([Vector3(-59.4, 0, 33), -PI * 0.5, "idle", false, "peasant"])
-	work_spots.append([Vector3(-19.6, 0, -48), -PI * 0.5, "idle", false, "peasant"])  # kuyu başında
 	work_spots.append([Vector3(66, 0, 20), 0.0, "idle", false, "peasant"])  # ahır önünde
-	# Kuyu başında sohbet eden köylüler (çember, ortaya bakar)
-	for k in 4:
-		var a := k * TAU / 4.0 + 0.4
+	# Kuyu başında sohbet eden iki köylü (karşılıklı)
+	for k in 2:
+		var a := k * PI + 0.4
 		var p := Vector3(-22, 0, -48) + Vector3(sin(a), 0, cos(a)) * 3.2
 		work_spots.append([p, a + PI, "idle", false, "peasant"])
-	# Kışla kapısında bekleşen askerler
-	for k in 3:
-		work_spots.append([Vector3(-60 + k * 2.2, 0, -34.5), PI * (0.85 + 0.15 * k), "idle", false, "soldier"])
-	# Kılıç talimi: iç avluda karşılıklı iki sıra
-	for k in 3:
+	# Kılıç talimi: iç avluda karşılıklı iki çift
+	for k in 2:
 		var x := -26.0 + k * 5.0
 		work_spots.append([IC + Vector3(x, 0, 24), PI, "attack", false, "soldier"])
 		work_spots.append([IC + Vector3(x, 0, 21.6), 0.0, "attack", false, "soldier"])

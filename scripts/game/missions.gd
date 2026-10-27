@@ -6,8 +6,8 @@ extends RefCounted
 const LIST := [
 	{"id": "bridge", "title": "ASMA KÖPRÜ", "goal": "Asma köprüyü indir", "limit": 6, "stars": [2, 4]},
 	{"id": "gate", "title": "KAPI KULELERİ", "goal": "Dış kapının iki kulesini de yık", "limit": 10, "stars": [5, 8]},
-	{"id": "breach", "title": "GEDİK", "goal": "Dış ön surda gedik aç (12 taş blok)", "limit": 8, "stars": [3, 5]},
-	{"id": "raid", "title": "AVLU BASKINI", "goal": "Kaleden 20 kişiyi etkisiz bırak", "limit": 10, "stars": [5, 8]},
+	{"id": "breach", "title": "GEDİK", "goal": "Dış ön surda gedik aç (9 taş blok)", "limit": 8, "stars": [3, 5]},
+	{"id": "raid", "title": "AVLU BASKINI", "goal": "Kaleden 10 kişiyi etkisiz bırak", "limit": 10, "stars": [5, 8]},
 	{"id": "commander", "title": "KOMUTAN", "goal": "Ana kuledeki komutanı indir", "limit": 12, "stars": [5, 8]},
 	{"id": "flag", "title": "SANCAK", "goal": "Ana kulenin sancağını yere indir", "limit": 12, "stars": [5, 8]},
 	{"id": "raze", "title": "YERLE BİR", "goal": "Kalenin %40'ını yık", "limit": 40, "stars": [20, 30]},

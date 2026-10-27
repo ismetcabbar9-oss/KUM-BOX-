@@ -15,15 +15,8 @@ static func pbr(tex_name: String, scale: float, tint := Color.WHITE, world_tripl
 	var m := StandardMaterial3D.new()
 	m.albedo_texture = load(TEX + tex_name + "_diff_1k.jpg")
 	m.albedo_color = tint
-	m.normal_enabled = true
-	m.normal_texture = load(TEX + tex_name + "_nor_gl_1k.jpg")
-	m.normal_scale = 1.0
-	var arm: Texture2D = load(TEX + tex_name + "_arm_1k.jpg")
-	m.roughness_texture = arm
-	m.roughness_texture_channel = BaseMaterial3D.TEXTURE_CHANNEL_GREEN
-	m.ao_enabled = true
-	m.ao_texture = arm
-	m.ao_texture_channel = BaseMaterial3D.TEXTURE_CHANNEL_RED
+	# Stilize: yalnız renk dokusu (mobilde ucuz); pürüz sabit
+	m.roughness = 0.85
 	m.uv1_triplanar = true
 	m.uv1_world_triplanar = world_triplanar
 	m.uv1_triplanar_sharpness = 4.0
@@ -161,8 +154,6 @@ static func build_ground(parent: Node3D) -> void:
 	var mat := ShaderMaterial.new()
 	mat.shader = load("res://assets/shaders/ground.gdshader")
 	mat.set_shader_parameter("albedo_tex", load(TEX + "rocky_terrain_02_diff_1k.jpg"))
-	mat.set_shader_parameter("normal_tex", load(TEX + "rocky_terrain_02_nor_gl_1k.jpg"))
-	mat.set_shader_parameter("arm_tex", load(TEX + "rocky_terrain_02_arm_1k.jpg"))
 	var noise := FastNoiseLite.new()
 	noise.frequency = 0.02
 	noise.fractal_octaves = 3

@@ -42,9 +42,9 @@ func progress() -> String:
 		"gate":
 			return "Yıkılan kule: %d / 2" % _gate_towers_down()
 		"breach":
-			return "Gedik: %d / 12 blok" % _breach_blocks()
+			return "Gedik: %d / 9 blok" % _breach_blocks()
 		"raid":
-			return "Etkisiz: %d / 20" % (crowd.figures.size() - crowd.alive_count())
+			return "Etkisiz: %d / 10" % (crowd.figures.size() - crowd.alive_count())
 		"raze":
 			return "Yıkım: %%%d / %%40" % roundi((1.0 - castle.intact_ratio()) * 100.0)
 	return ""
@@ -57,9 +57,9 @@ func _met() -> bool:
 		"gate":
 			return _gate_towers_down() >= 2
 		"breach":
-			return _breach_blocks() >= 12
+			return _breach_blocks() >= 9
 		"raid":
-			return crowd.figures.size() - crowd.alive_count() >= 20
+			return crowd.figures.size() - crowd.alive_count() >= 10
 		"commander":
 			for s in crowd.figures:
 				if s.role == "commander":

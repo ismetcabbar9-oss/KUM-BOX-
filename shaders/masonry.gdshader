@@ -2,6 +2,7 @@ shader_type spatial;
 // Kesme taş örgü: blok yüzünde küçük tuğla ızgarası (harç çizgileri). Izgara, bloğun
 // kırılınca ayrılacağı tuğla boyutuyla aynıdır: kopan parçalar duvarda görünen taşlarla
 // birebir (orta parça = harçla tutunmuş 2×2×2 küçük tuğla).
+// Stilize: yalnız renk dokusu + harç + çatlak (normal/AO dokusu yok).
 //
 // Boyut ve durum: MultiMesh'te INSTANCE_CUSTOM, tek MeshInstance'ta malzemenin fixed_size'ı.
 //   xyz = boyut
@@ -10,11 +11,9 @@ shader_type spatial;
 //   w = 0       : boyut bilinmiyor (harçsız)
 
 uniform sampler2D albedo_tex : source_color, filter_linear_mipmap, repeat_enable;
-uniform sampler2D normal_tex : hint_normal, filter_linear_mipmap, repeat_enable;
-uniform sampler2D arm_tex : filter_linear_mipmap, repeat_enable;
 uniform vec4 tint : source_color = vec4(0.82, 0.79, 0.74, 1.0);
 uniform vec4 mortar_color : source_color = vec4(0.42, 0.40, 0.37, 1.0);
-uniform vec3 brick = vec3(0.75, 0.5, 0.5);
+uniform vec3 brick = vec3(1.0, 0.75, 0.75);
 uniform float mortar = 0.03;
 uniform float tex_scale = 0.33;
 uniform vec4 fixed_size = vec4(0.0);
@@ -73,9 +72,7 @@ void fragment() {
 	float var_c = 0.88 + 0.24 * hash(idx + 3.0);
 	float mt = 1.0 - smoothstep(mortar * 0.6, mortar, m);
 	vec3 col = mix(tex * tint.rgb * var_c, mortar_color.rgb, mt);
-	vec3 arm = texture(arm_tex, uv).rgb;
-	float rough = mix(arm.g, 1.0, mt);
-	float nd = 1.0 - mt;
+	float rough = mix(0.85, 1.0, mt);
 	// Çatlaklar: hasar arttıkça kalınlaşan, taş yüzünde dallanan hücre kenarları
 	if (dmg > 0.01) {
 		vec2 cu = face * 1.1;
@@ -103,11 +100,7 @@ void fragment() {
 		col *= 1.0 - 0.8 * crack;
 		col = mix(col, col * vec3(0.92, 0.9, 0.86), dmg * 0.4);  // tozlanma
 		rough = mix(rough, 1.0, crack);
-		nd *= 1.0 - crack;
 	}
 	ALBEDO = col;
 	ROUGHNESS = rough;
-	AO = arm.r;
-	NORMAL_MAP = texture(normal_tex, uv).rgb;
-	NORMAL_MAP_DEPTH = nd;
 }

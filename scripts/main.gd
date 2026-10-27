@@ -138,35 +138,36 @@ func _apply_quality(q: int) -> void:
 	var vp := get_viewport()
 	match q:
 		0:
+			# Düşük seviye cihaz: gölge yok, düşük çözünürlük
+			sun.shadow_enabled = false
+			vp.msaa_3d = Viewport.MSAA_DISABLED
+			vp.scaling_3d_scale = 0.65
+			env.glow_enabled = false
+			Destructible.max_spawned = 30
+			BrickPool.limit = 250
+			BrickPool.active_limit = 90
+		1:
+			sun.shadow_enabled = true
 			sun.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
-			sun.directional_shadow_max_distance = 70.0
+			sun.directional_shadow_max_distance = 110.0
 			RenderingServer.directional_shadow_atlas_set_size(2048, true)
 			vp.msaa_3d = Viewport.MSAA_DISABLED
-			vp.scaling_3d_scale = 0.7
+			vp.scaling_3d_scale = 0.8
 			env.glow_enabled = false
-			Destructible.max_spawned = 40
-			BrickPool.limit = 400
-			BrickPool.active_limit = 150
-		1:
-			sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
-			sun.directional_shadow_max_distance = 140.0
-			RenderingServer.directional_shadow_atlas_set_size(2048, true)
-			vp.msaa_3d = Viewport.MSAA_2X
-			vp.scaling_3d_scale = 0.85
-			env.glow_enabled = true
-			Destructible.max_spawned = 100
-			BrickPool.limit = 700
-			BrickPool.active_limit = 280
+			Destructible.max_spawned = 60
+			BrickPool.limit = 450
+			BrickPool.active_limit = 160
 		2:
-			sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
-			sun.directional_shadow_max_distance = 220.0
-			RenderingServer.directional_shadow_atlas_set_size(4096, true)
+			sun.shadow_enabled = true
+			sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
+			sun.directional_shadow_max_distance = 180.0
+			RenderingServer.directional_shadow_atlas_set_size(2048, true)
 			vp.msaa_3d = Viewport.MSAA_2X
 			vp.scaling_3d_scale = 1.0
 			env.glow_enabled = true
-			Destructible.max_spawned = 160
-			BrickPool.limit = 1200
-			BrickPool.active_limit = 450
+			Destructible.max_spawned = 100
+			BrickPool.limit = 700
+			BrickPool.active_limit = 220
 
 
 # --- Dünya ---------------------------------------------------------------

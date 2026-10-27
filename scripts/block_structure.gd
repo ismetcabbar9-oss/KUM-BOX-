@@ -32,8 +32,6 @@ static func material(mat_name: String) -> Material:
 		sm.shader = load("res://shaders/masonry.gdshader")
 		var t := "res://assets/textures/rock_boulder_dry_%s_1k.jpg"
 		sm.set_shader_parameter("albedo_tex", load(t % "diff"))
-		sm.set_shader_parameter("normal_tex", load(t % "nor_gl"))
-		sm.set_shader_parameter("arm_tex", load(t % "arm"))
 		_mat_cache[mat_name] = sm
 		return sm
 	var m := _pbr("rough_wood", 0.7, Color(0.85, 0.78, 0.7))
@@ -56,13 +54,7 @@ static func _pbr(tex: String, scale: float, tint: Color) -> StandardMaterial3D:
 	var t := "res://assets/textures/" + tex + "_%s_1k.jpg"
 	m.albedo_texture = load(t % "diff")
 	m.albedo_color = tint
-	m.normal_enabled = true
-	m.normal_texture = load(t % "nor_gl")
-	m.roughness_texture = load(t % "arm")
-	m.roughness_texture_channel = BaseMaterial3D.TEXTURE_CHANNEL_GREEN
-	m.ao_enabled = true
-	m.ao_texture = load(t % "arm")
-	m.ao_texture_channel = BaseMaterial3D.TEXTURE_CHANNEL_RED
+	m.roughness = 0.85
 	m.uv1_triplanar = true
 	m.uv1_world_triplanar = false  # parça dönerken doku yüzeye yapışık
 	m.uv1_scale = Vector3.ONE * scale

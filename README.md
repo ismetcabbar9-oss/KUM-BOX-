@@ -1,4 +1,4 @@
-# Kaya Yuvarla — prototip v1.2
+# Kaya Yuvarla — prototip v1.3
 
 Geliştirme planı: [PLAN.md](PLAN.md) (kademeli aşamalar).
 
@@ -34,6 +34,21 @@ Sapan ve topta sarı noktalar tahmini yörüngeyi gösterir.
 **Mermiler:** **Üçlü testere** (havada ±8° açıyla üç diske ayrılır), **Yapışkan bomba** (değdiği yere yapışır, hızlanan bip sesleriyle 1,8 sn sonra patlar; hareketli gövdeye iğnelenir).
 
 **Engeller:** dönen çelik pervane (kinematik), sallanan yıkım gülle sarkacı (gerçek menteşe), konteyner yığınları, beton bariyerler, tuğla duvar, variller, sandıklar, taşlar.
+
+## v1.3 (Kademe 1: hafifletme)
+- Kale aynı boyutta, blok sayısı ~4000 → ~2940 (blok boyu 4,5 → 6,5 m, iri mazgal dişleri, avlu
+  binalarında iri blok). Yıkım dengesi korundu (30 güçlü darbede ~%34).
+- Parçalanma hafifledi: kopan blok daha az ve iri tuğlaya ayrılır (2,25 × 1,5 × 1,5 m; darbe
+  noktasında en çok 2 hücre ince kırılır). Fizikte tuğla tavanı 1500 → 250/450/700 (kaliteye göre),
+  zeminde kalan moloz 6000 → 2500, kare başına üretim 160 → 60.
+- Stilize grafik: normal/AO/pürüz dokuları kaldırıldı (zemin, taş, ahşap, metal yalnız renk dokusu);
+  varlıklar 38 → 30 MB.
+- Kalite ayarları düşük/orta cihaza göre: DÜŞÜK gölgesiz, %65 çözünürlük; ORTA (telefonda varsayılan)
+  tek bölmeli gölge, MSAA ve parlama kapalı, %80 çözünürlük; YÜKSEK 2 bölmeli gölge.
+- Kalabalık 76 → 30 figür: ön kulelerde 8 okçu, ana kulede komutan + 2 muhafız, kapılarda 4 nöbetçi,
+  ön surda 2 devriye, avluda yürüyen 4 kişi, 5 işçi (demirci, oduncu, ahırcı, kuyu başında 2), 4 kişilik
+  kılıç talimi.
+- Görevler yeni sayılara göre: Gedik 9 blok, Avlu Baskını 10 kişi.
 
 ## v1.2 (Kademe 0: temizlik)
 - Kullanılmayan dosyalar silindi (varlıklar 53 MB → 38 MB): kullanılmayan modeller ve doku setleri,
