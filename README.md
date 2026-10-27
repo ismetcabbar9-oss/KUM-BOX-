@@ -1,4 +1,4 @@
-# Kaya Yuvarla — prototip v1.3
+# Kaya Yuvarla — prototip v1.4
 
 Geliştirme planı: [PLAN.md](PLAN.md) (kademeli aşamalar).
 
@@ -34,6 +34,15 @@ Sapan ve topta sarı noktalar tahmini yörüngeyi gösterir.
 **Mermiler:** **Üçlü testere** (havada ±8° açıyla üç diske ayrılır), **Yapışkan bomba** (değdiği yere yapışır, hızlanan bip sesleriyle 1,8 sn sonra patlar; hareketli gövdeye iğnelenir).
 
 **Engeller:** dönen çelik pervane (kinematik), sallanan yıkım gülle sarkacı (gerçek menteşe), konteyner yığınları, beton bariyerler, tuğla duvar, variller, sandıklar, taşlar.
+
+## v1.4 (Kademe 2: düzen ve görevler)
+- Görevler sıralı zincir: Asma Köprü → Kapı Kuleleri → Gedik → Avlu Baskını → Komutan → Sancak →
+  Yerle Bir. Bir görev, öncekinden en az 1 yıldız alınınca açılır (listede "kilitli" görünür).
+- Oyun açılınca sıradaki görev kendiliğinden başlar; hedef ekranın ortasında 3,5 sn gösterilir.
+  SERBEST OYUN görev panelinden seçilir.
+- Sade arayüz: üstte yalnız GÖREVLER ve AYARLAR. Grafik kalitesi, ağır çekim, FPS göstergesi ve
+  lisanslar AYARLAR panelinde. Hız göstergesi yalnız mermi hareket ederken, yıkım yalnız yüzde.
+- Görev hedefleri yerleşimle bağlantılı (okçuların durduğu kapı kuleleri, ana kule tepesindeki komutan).
 
 ## v1.3 (Kademe 1: hafifletme)
 - Kale aynı boyutta, blok sayısı ~4000 → ~2940 (blok boyu 4,5 → 6,5 m, iri mazgal dişleri, avlu

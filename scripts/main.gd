@@ -16,12 +16,13 @@ const SIZES := [
 	{"name": "DEV", "k": 2.2},
 ]
 const QUALITY := ["DÜŞÜK", "ORTA", "YÜKSEK"]
-const MAPS := {"castle": "KALE"}
 
 ## Sahne yeniden yüklendiğinde de korunur
 static var map_name := "castle"
 ## Etkin kuşatma görevi ("" = serbest oyun)
 static var mission_id := ""
+## İlk açılışta sıradaki görev otomatik başlar (sonra oyuncunun seçimi korunur)
+static var _first_run := true
 
 var camera: Camera3D
 var hud: CanvasLayer
@@ -94,7 +95,6 @@ func _ready() -> void:
 		launcher.cycle_option()
 		_reload_if_waiting())
 	hud.quality_pressed.connect(func() -> void: _apply_quality((quality + 1) % QUALITY.size()))
-	hud.set_map_name(MAPS[map_name])
 	hud.mission_selected.connect(func(id: String) -> void:
 		mission_id = id
 		_restart())
@@ -105,6 +105,9 @@ func _ready() -> void:
 			"free":
 				mission_id = ""
 		_restart())
+	if _first_run and not "--autotest" in OS.get_cmdline_user_args():
+		mission_id = Missions.current()
+	_first_run = false
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--mission="):
 			mission_id = a.get_slice("=", 1)
@@ -112,6 +115,7 @@ func _ready() -> void:
 		mission = MissionRunner.new()
 		add_child(mission)
 		mission.start(Missions.find(mission_id), castle, crowd_node, hud)
+		hud.show_banner(Missions.find(mission_id))
 		if "--autotest" in OS.get_cmdline_user_args():
 			mission.finished.connect(func(ok: bool, st: int) -> void: print("GÖREV %s: %s, %d yıldız, %d atış" % [mission_id, "BAŞARILI" if ok else "BAŞARISIZ", st, mission.shots]))
 
@@ -568,6 +572,25 @@ func _autotest() -> void:
 				await get_tree().physics_frame
 			var bb := castle.bridge.body
 			print("köprü açı=%.0f° uç=%s" % [rad_to_deg(castle.bridge._angle), bb.to_global(Vector3(0, 0, 8)).round()])
+		get_tree().quit()
+		return
+	if "--shots-ui" in args:
+		# Arayüz yerleşimi: görev yazısı + ayarlar paneli
+		hud.show_banner(Missions.find("gate"))
+		hud.set_mission_text("KAPI KULELERİ — test\nAtış 0 / 10")
+		for k in 3:
+			await get_tree().process_frame
+		get_viewport().get_texture().get_image().save_png("user://ui_a.png")
+		hud.settings_panel.visible = true
+		hud.missions_panel.visible = false
+		for k in 3:
+			await get_tree().process_frame
+		get_viewport().get_texture().get_image().save_png("user://ui_b.png")
+		hud.settings_panel.visible = false
+		hud.missions_panel.visible = true
+		for k in 3:
+			await get_tree().process_frame
+		get_viewport().get_texture().get_image().save_png("user://ui_c.png")
 		get_tree().quit()
 		return
 	if "--shots5" in args:

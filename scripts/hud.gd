@@ -1,5 +1,7 @@
 extends CanvasLayer
 ## Dokunmatik arayüz: büyük butonlar, hız ve yıkım göstergesi.
+## Sade düzen: üstte GÖREVLER + AYARLAR; sağda (dikeyde altta) oyun butonları. Grafik, ağır çekim,
+## FPS ve lisanslar AYARLAR panelinde.
 
 signal fire_pressed
 signal launcher_pressed
@@ -8,7 +10,6 @@ signal reset_pressed
 signal size_pressed
 signal slowmo_toggled(on: bool)
 signal quality_pressed
-signal map_pressed
 signal option_pressed
 signal mission_selected(id: String)
 signal result_action(action: String)
@@ -24,8 +25,12 @@ var info_label: Label
 var hint_label: Label
 var fps_label: Label
 var quality_button: Button
-var map_button: Button
 var credits_panel: PanelContainer
+var settings_panel: PanelContainer
+var _slow_button: Button
+var _fps_button: Button
+var _banner: Label
+var _banner_t := 0.0
 var missions_panel: PanelContainer
 var result_panel: PanelContainer
 var mission_label: Label
@@ -94,7 +99,7 @@ func _ready() -> void:
 	fps_label.add_theme_font_size_override("font_size", 18)
 	stats.add_child(fps_label)
 
-	# Sağ üst: grafik kalitesi + lisanslar
+	# Sağ üst: görevler + ayarlar
 	var top := HBoxContainer.new()
 	top.size_flags_horizontal = Control.SIZE_SHRINK_END
 	top.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
@@ -103,15 +108,9 @@ func _ready() -> void:
 	var mis := _button(top, "GÖREVLER", func() -> void: missions_panel.visible = not missions_panel.visible)
 	mis.custom_minimum_size = Vector2(170, 56)
 	mis.add_theme_font_size_override("font_size", 20)
-	map_button = _button(top, "HARİTA", func() -> void: map_pressed.emit())
-	map_button.custom_minimum_size = Vector2(190, 56)
-	map_button.add_theme_font_size_override("font_size", 20)
-	quality_button = _button(top, "GRAFİK: ORTA", func() -> void: quality_pressed.emit())
-	quality_button.custom_minimum_size = Vector2(200, 56)
-	quality_button.add_theme_font_size_override("font_size", 20)
-	var lic := _button(top, "LİSANSLAR", func() -> void: credits_panel.visible = not credits_panel.visible)
-	lic.custom_minimum_size = Vector2(150, 56)
-	lic.add_theme_font_size_override("font_size", 20)
+	var st := _button(top, "AYARLAR", func() -> void: settings_panel.visible = not settings_panel.visible)
+	st.custom_minimum_size = Vector2(170, 56)
+	st.add_theme_font_size_override("font_size", 20)
 
 	# Sağ: aksiyon butonları
 	buttons = GridContainer.new()
@@ -128,9 +127,6 @@ func _ready() -> void:
 	option_button = _button(buttons, "AYAR", func() -> void: option_pressed.emit())
 	ammo_button = _button(buttons, "GRANİT", func() -> void: ammo_pressed.emit())
 	size_button = _button(buttons, "ORTA", func() -> void: size_pressed.emit())
-	var slow := _button(buttons, "AĞIR ÇEKİM", func() -> void: pass)
-	slow.toggle_mode = true
-	slow.toggled.connect(func(on: bool) -> void: slowmo_toggled.emit(on))
 	_button(buttons, "SIFIRLA", func() -> void: reset_pressed.emit())
 
 	# Alt orta: ipucu
@@ -160,9 +156,23 @@ func _ready() -> void:
 	mission_label.add_theme_color_override("font_color", Color(1.0, 0.88, 0.5))
 	mission_label.visible = false
 	root.add_child(mission_label)
+	# Görev başlangıç yazısı: ekran ortasında kısa süre
+	_banner = Label.new()
+	_banner.set_anchors_preset(Control.PRESET_CENTER)
+	_banner.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_banner.grow_vertical = Control.GROW_DIRECTION_BOTH
+	_banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_banner.add_theme_font_size_override("font_size", 38)
+	_banner.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_banner.custom_minimum_size = Vector2(620, 0)  # dikeyde de sığar, sağdaki butonlara taşmaz
+	_banner.add_theme_constant_override("outline_size", 10)
+	_banner.visible = false
+	root.add_child(_banner)
 	missions_panel = _panel(root)
 	result_panel = _panel(root)
+	settings_panel = _panel(root)
 	_build_missions_panel()
+	_build_settings_panel()
 
 	# Lisans paneli (CC-BY atıfları oyunda gösterilmeli)
 	credits_panel = PanelContainer.new()
@@ -204,9 +214,11 @@ func _button(parent: Control, text: String, cb: Callable) -> Button:
 
 
 func set_stats(speed_kmh: float, destroyed: int, total: int) -> void:
+	# Hız yalnız mermi hareket ederken
 	speed_label.text = "%d km/sa" % roundi(speed_kmh)
+	speed_label.visible = speed_kmh >= 1.0
 	var pct := 0.0 if total == 0 else 100.0 * destroyed / total
-	destroy_label.text = "Yıkım: %%%d  (%d/%d)" % [roundi(pct), destroyed, total]
+	destroy_label.text = "Yıkım: %%%d" % roundi(pct)
 
 
 ## Dikey ekranda butonlar altta 3 sütunlu ızgara, ipucu üstte; yatayda sağda tek sütun.
@@ -235,17 +247,54 @@ func set_fps(fps: int, extra: String) -> void:
 	fps_label.text = "%d FPS  %s" % [fps, extra]
 
 
-func set_map_name(n: String) -> void:
-	map_button.text = n
-	map_button.visible = false  # tek harita: buton gereksiz (dikey ekranda yer açar)
-
-
 func set_quality_name(n: String) -> void:
 	quality_button.text = "GRAFİK: " + n
 
 
+## Ayarlar: grafik kalitesi, ağır çekim, FPS göstergesi, lisanslar
+func _build_settings_panel() -> void:
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 10)
+	settings_panel.add_child(box)
+	_title(box, "AYARLAR")
+	quality_button = _button(box, "GRAFİK: ORTA", func() -> void: quality_pressed.emit())
+	_slow_button = _button(box, "AĞIR ÇEKİM: KAPALI", func() -> void: pass)
+	_slow_button.toggle_mode = true
+	_slow_button.toggled.connect(func(on: bool) -> void:
+		_slow_button.text = "AĞIR ÇEKİM: " + ("AÇIK" if on else "KAPALI")
+		slowmo_toggled.emit(on))
+	_fps_button = _button(box, "FPS: KAPALI", func() -> void:
+		fps_label.visible = not fps_label.visible
+		_fps_button.text = "FPS: " + ("AÇIK" if fps_label.visible else "KAPALI"))
+	_button(box, "LİSANSLAR", func() -> void:
+		settings_panel.visible = false
+		credits_panel.visible = true)
+	_button(box, "KAPAT", func() -> void: settings_panel.visible = false)
+	for b in box.get_children():
+		if b is Button:
+			b.custom_minimum_size = Vector2(420, 62)
+	# FPS göstergesi varsayılan kapalı (geliştirici testinde açık)
+	fps_label.visible = "--autotest" in OS.get_cmdline_user_args()
+
+
+## Görev başında hedefi ekranın ortasında kısa süre göster
+func show_banner(m: Dictionary) -> void:
+	_banner.text = "%s\n%s\nEn çok %d atış" % [m["title"], m["goal"], m["limit"]]
+	_banner.visible = true
+	_banner.modulate.a = 1.0
+	_banner_t = 3.5
+
+
+func _process(delta: float) -> void:
+	if _banner_t > 0.0:
+		_banner_t -= delta
+		_banner.modulate.a = clampf(_banner_t / 0.6, 0.0, 1.0)
+		if _banner_t <= 0.0:
+			_banner.visible = false
+
+
 func is_over_ui(pos: Vector2) -> bool:
-	if credits_panel.visible or missions_panel.visible or result_panel.visible:
+	if credits_panel.visible or missions_panel.visible or result_panel.visible or settings_panel.visible:
 		return true
 	for b in get_tree().get_nodes_in_group("hud_button"):
 		if (b as Control).get_global_rect().has_point(pos):
@@ -347,12 +396,16 @@ func refresh_missions() -> void:
 	for c in _missions_list.get_children():
 		c.queue_free()
 	var stars := Missions.load_stars()
+	var n := 0
 	for m in Missions.LIST:
+		n += 1
 		var st := int(stars.get(m["id"], 0))
-		var txt := "%s   %s   (en çok %d atış)" % ["★".repeat(st) + "☆".repeat(3 - st), m["title"], m["limit"]]
+		var open := Missions.unlocked(m["id"], stars)
+		var txt := "%d. %s   %s" % [n, m["title"], "★".repeat(st) + "☆".repeat(3 - st)] if open else "%d. %s   (kilitli)" % [n, m["title"]]
 		var b := _button(_missions_list, txt, func() -> void: mission_selected.emit(m["id"]))
-		b.custom_minimum_size = Vector2(620, 60)
+		b.custom_minimum_size = Vector2(560, 60)
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		b.disabled = not open
 		b.tooltip_text = m["goal"]
 
 
