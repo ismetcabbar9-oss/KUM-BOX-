@@ -1,4 +1,4 @@
-# Kaya Yuvarla — prototip v1.1
+# Kaya Yuvarla — prototip v1.2
 
 Geliştirme planı: [PLAN.md](PLAN.md) (kademeli aşamalar).
 
@@ -34,6 +34,15 @@ Sapan ve topta sarı noktalar tahmini yörüngeyi gösterir.
 **Mermiler:** **Üçlü testere** (havada ±8° açıyla üç diske ayrılır), **Yapışkan bomba** (değdiği yere yapışır, hızlanan bip sesleriyle 1,8 sn sonra patlar; hareketli gövdeye iğnelenir).
 
 **Engeller:** dönen çelik pervane (kinematik), sallanan yıkım gülle sarkacı (gerçek menteşe), konteyner yığınları, beton bariyerler, tuğla duvar, variller, sandıklar, taşlar.
+
+## v1.2 (Kademe 0: temizlik)
+- Kullanılmayan dosyalar silindi (varlıklar 53 MB → 38 MB): kullanılmayan modeller ve doku setleri,
+  animasyon kaynak modelleri ve kaya kaynaklarının mesh dosyaları (kaya dokuları kaldı), cam/zincir/rüzgâr sesleri,
+  geliştirme önizleme araçları.
+- Ölü kod kaldırıldı: eski hazır-bina (GLB) sistemi, cam/çelik/taş/beton blok malzemeleri, ayak-devrilme
+  kuralı, önceden kesilmiş yarılar.
+- Oyun alanı kenarları: ağaç 26 → 14, dekor kaya 18 → 10, kalenin hemen yanına toplandı; kamera görüş
+  mesafesi 1500 → 900 m.
 
 ## v1.1
 - Zincirli gülle ve SPİRAL rampa kaldırıldı (rampa türleri: KLASİK, KAYAK ATLAMA, S-KIVRIM, TEPELİ).
@@ -174,34 +183,35 @@ Sapan ve topta sarı noktalar tahmini yörüngeyi gösterir.
 ## Dosya yapısı
 
 ```
-scripts/main.gd            seviye, girdi, grafik kalitesi, otomatik test
-scripts/building.gd        gerçek bina + önceden kesilmiş parçalar
-scripts/destructible.gd    yıkılabilir parça (ses/toz, uyku/dondurma)
-scripts/rock.gd            oyuncu kayası
-scripts/models.gd          glTF yardımcıları (ölçek, dışbükey örtü)
-scripts/world_builder.gd   ayaklı rampa, zemin, PBR malzemeler
-scripts/game_camera.gd     takip kamerası
-scripts/hud.gd             dokunmatik arayüz, lisans paneli
-scripts/sfx.gd, fx.gd      ses havuzu/bus'lar, toz + sarsıntı (autoload)
-scripts/fortress.gd        dev kale (kuleler, surlar, asker yerleri, kule çöküşü)
-scripts/brick_pool.gd      kale bloklarını tuğlalara ayırma + MultiMesh çizim
-shaders/masonry.gdshader   kesme taş örgü (harç ızgarası)
-scripts/characters/        taş devri ekibi, asker, prosedürel poz (RigPose)
-assets/models/             işlenmiş modeller (dokular ≤2K)
-assets/buildings/*.scn     kesilmiş binalar (fracture aracının çıktısı)
-assets/sounds/             işlenmiş ses kayıtları (OGG)
-tools/prepare_models.py    Sketchfab/Poly Haven indir + dokuları küçült
-tools/fracture_buildings.gd binaları parçalara böl
-tools/process_sounds.py    Freesound CC0 indir + kes/katmanla
+scripts/main.gd             sahne kurulumu, girdi, grafik kalitesi, sinematik, otomatik test
+scripts/building.gd         yapısal model (darbe enerjisi, destek araması)
+scripts/block_structure.gd  bloklardan yapı (MultiMesh çizim, malzemeler)
+scripts/fortress.gd         kale yapı taşları (kule, sur, ev, çatı, kule çöküşü)
+scripts/brick_pool.gd       kopan blokları tuğlalara ayırma + moloz
+scripts/destructible.gd     yıkılabilir parça (ses/toz, uyku/dondurma, bölünme)
+scripts/projectile.gd       mermiler
+scripts/castle/             kale yerleşimi, asma köprü, sancak
+scripts/characters/         kalabalık, asker/okçu/köylü, ok, taş devri ekibi
+scripts/game/               görevler, yangın
+scripts/launchers/          rampa, mancınık, sapan, top, roket kızağı
+scripts/world_builder.gd    zemin, rampa, PBR malzemeler
+scripts/game_camera.gd      takip kamerası
+scripts/hud.gd              dokunmatik arayüz, görev/sonuç panelleri, lisanslar
+scripts/sfx.gd, fx.gd       ses havuzu, efektler (autoload)
+shaders/                    kesme taş, su, sancak
+assets/models/              oyunda kullanılan modeller
+assets/rocks/, assets/anims/ türetilmiş kaya mesh'leri ve animasyon kütüphaneleri
+assets/data/                mancınık nişan tablosu
+tools/                      varlık indirme/işleme, mancınık kalibrasyonu (tools/dev)
 ```
 
 Varlıkları yeniden üretmek:
 ```
-SKETCHFAB_API_TOKEN=... python3 tools/prepare_models.py
+SKETCHFAB_API_TOKEN=... python3 tools/prepare_models.py   # kaynak modeller (kaya + animasyon kaynakları dahil)
 godot --headless --path . --import
-godot --headless --path . -s res://tools/fracture_buildings.gd
 godot --headless --path . -s res://tools/prepare_rocks.gd
-python3 tools/process_sounds.py
+godot --headless --path . -s res://tools/retarget_anims.gd
+python3 tools/process_sounds_oga.py
 python3 tools/fetch_textures.py
 ```
 

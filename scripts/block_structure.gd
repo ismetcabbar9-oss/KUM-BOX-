@@ -1,25 +1,16 @@
 class_name BlockStructure
 extends Building
-## Bloklardan kurulan yapı (kale, ahşap kule, su kulesi, sera...). Building'in yapısal
-## modelini kullanır: bloklar statik dondurulmuş başlar, birikimli hasar alır, desteği
-## kalmayan kısımlar çöker.
+## Bloklardan kurulan yapı (kale parçaları). Building'in yapısal modelini kullanır: bloklar
+## statik dondurulmuş başlar, birikimli hasar alır, desteği kalmayan kısımlar çöker.
 ##
-## Malzemeler fiziksel olarak farklıdır:
-##   stone   : ağır, orta dayanım, kopunca sert darbede ikiye bölünür
-##   wood    : hafif, kolay kırılır, kopan kiriş kolayca ikiye kırılır
-##   steel   : ağır profil, çok dayanıklı, bölünmez (eğilmeyi taklit etmez)
-##   glass   : neredeyse dayanımsız; koptuğu an tuzla buz olur (parçacık + ses)
-##   concrete: beton döşeme/kolon
+## Malzemeler:
+##   masonry : kesme taş örgü; kopunca BrickPool ile tuğlalara ayrılır
+##   wood    : hafif, kolay kırılır, kopan kiriş kolayca ikiye kırılır; yanar
 ##
 ## Çizim: sağlam bloklar (şekil, boyut, malzeme) gruplarına göre MultiMesh ile çizilir.
 
 const MATERIALS := {
-	"stone": {"kind": "stone", "density": 2300.0, "strength": 14000.0, "split": 9000.0},
 	"wood": {"kind": "wood", "density": 650.0, "strength": 9000.0, "split": 2500.0},
-	"steel": {"kind": "metal", "density": 1600.0, "strength": 600000.0, "split": 0.0},
-	"glass": {"kind": "glass", "density": 2500.0, "strength": 800.0, "split": 0.0},
-	"concrete": {"kind": "concrete", "density": 2200.0, "strength": 30000.0, "split": 12000.0},
-	# Kesme taş örgü (kale): kopunca BrickPool ile tuğlalara ayrılır
 	"masonry": {"kind": "stone", "density": 2300.0, "strength": 8000.0, "split": 0.0},
 }
 const GAP := 0.03
@@ -29,11 +20,6 @@ static var _mat_cache := {}
 var _defs: Array[Dictionary] = []
 var _groups := {}
 var _instance_of := {}  # Destructible -> [MultiMesh, index, mesh, def]
-## Taşıyıcı ayaklar: her ayak bir blok listesi. Sağlam ayak sayısı min_columns'un altına
-## düşerse yapı devrilir (kalan tüm bloklar serbest kalır).
-var columns := {}  # ayak no -> [Destructible]
-var min_columns := 0
-var _toppled := false
 ## Örgü bloklarını tuğlalara ayıran havuz (yalnız "masonry" malzemesi)
 var brick_pool: BrickPool
 
@@ -50,24 +36,7 @@ static func material(mat_name: String) -> Material:
 		sm.set_shader_parameter("arm_tex", load(t % "arm"))
 		_mat_cache[mat_name] = sm
 		return sm
-	var m: StandardMaterial3D
-	match mat_name:
-		"stone":
-			m = _pbr("castle_wall_slates", 0.28, Color(0.92, 0.9, 0.86))
-		"wood":
-			m = _pbr("rough_wood", 0.7, Color(0.85, 0.78, 0.7))
-		"steel":
-			m = _pbr("rusty_metal_02", 0.5, Color(0.75, 0.75, 0.78))
-			m.metallic = 0.7
-		"concrete":
-			m = _pbr("rough_concrete", 0.35, Color(0.8, 0.79, 0.76))
-		"glass":
-			m = StandardMaterial3D.new()
-			m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-			m.albedo_color = Color(0.75, 0.88, 0.92, 0.28)
-			m.metallic = 0.2
-			m.roughness = 0.05
-			m.cull_mode = BaseMaterial3D.CULL_DISABLED
+	var m := _pbr("rough_wood", 0.7, Color(0.85, 0.78, 0.7))
 	_mat_cache[mat_name] = m
 	return m
 
@@ -103,8 +72,7 @@ static func _pbr(tex: String, scale: float, tint: Color) -> StandardMaterial3D:
 ## Blok ekle (yerel koordinat). opts: basis, shape ("box"|"cylinder"), density, strength
 func add_block(pos: Vector3, size: Vector3, layer: int, mat: String, opts := {}) -> void:
 	var d := {"pos": pos, "size": size, "layer": layer, "mat": mat,
-		"basis": opts.get("basis", Basis.IDENTITY), "shape": opts.get("shape", "box"),
-		"column": opts.get("column", -1)}
+		"basis": opts.get("basis", Basis.IDENTITY), "shape": opts.get("shape", "box")}
 	d["density"] = opts.get("density", MATERIALS[mat]["density"])
 	d["strength"] = opts.get("strength", MATERIALS[mat]["strength"])
 	_defs.append(d)
@@ -148,8 +116,6 @@ func finalize() -> void:
 		g["mm"] = mm
 		var mmi := MultiMeshInstance3D.new()
 		mmi.multimesh = mm
-		if (k as String).contains("glass"):
-			mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		add_child(mmi)
 	var idx := 0
 	for d in _defs:
@@ -182,8 +148,6 @@ func finalize() -> void:
 		mm.set_instance_transform(i, b.transform)
 		mm.set_instance_custom_data(i, Color(size.x, size.y, size.z, 0.5))
 		_instance_of[b] = [mm, i, g["mesh"], d]
-		if int(d["column"]) >= 0:
-			columns.get_or_add(int(d["column"]), []).append(b)
 	_compute_neighbors()
 
 
@@ -251,14 +215,6 @@ func _on_block_released(b: Destructible) -> void:
 	mm.set_instance_transform(info[1], Transform3D(Basis.from_scale(Vector3.ZERO), Vector3.ZERO))
 	_instance_of.erase(b)
 	var d: Dictionary = info[3]
-	if d["mat"] == "glass":
-		# Cam: tuzla buz
-		var size: Vector3 = d["size"]
-		Fx.glass_shards(b.global_position, size)
-		Sfx.glass(b.global_position)
-		forget(b)
-		b.queue_free()
-		return
 	var mi := MeshInstance3D.new()
 	mi.mesh = info[2]
 	b.add_child(mi)
@@ -271,30 +227,6 @@ func _on_block_released(b: Destructible) -> void:
 	var split: float = MATERIALS[d["mat"]]["split"]
 	if split > 0.0 and d["shape"] == "box":
 		b.make_splittable(d["size"], material(d["mat"]), split)
-
-
-func _check_support() -> void:
-	super()
-	if min_columns <= 0 or _toppled:
-		return
-	var standing := 0
-	for c in columns:
-		var ok := true
-		for b in columns[c]:
-			if not is_instance_valid(b) or not b.intact:
-				ok = false
-				break
-		if ok:
-			standing += 1
-	if standing < min_columns:
-		_toppled = true
-		# Devrilme: yapının ağırlık merkezi desteksiz kaldı; sağlam kalan her şey düşer.
-		# Hafif ortak yanal itki: hepsi aynı yöne yıkılır.
-		var lean := Vector3(randf_range(-1, 1), 0, randf_range(-1, 1)).normalized()
-		for b in chunks:
-			if is_instance_valid(b) and b.intact:
-				b.release(lean * b.mass * (0.3 + b.position.y * 0.08), b.global_position + Vector3.UP)
-		Sfx.crash(global_position + Vector3.UP * 8.0, crash_sound)
 
 
 ## Blok yapıları zaten parçalı: "kırık bina" görünümüne geçiş yok

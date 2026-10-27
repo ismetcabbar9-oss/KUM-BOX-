@@ -1,10 +1,9 @@
 class_name Building
 extends Node3D
-## Gerçek bina modeli + önceden kesilmiş DOLU parçalar (tools/fracture_buildings.gd).
+## Yıkılabilir yapıların ortak yapısal modeli (BlockStructure / Fortress bunu kullanır).
 ##
 ## Yapısal model:
-##  - Bina ayaktayken tüm parçalar statik dondurulmuştur: fizik maliyeti yok, kâğıt gibi
-##    dağılmaz. Sağlamken tek mesh çizilir (1 draw call).
+##  - Yapı ayaktayken tüm parçalar statik dondurulmuştur: fizik maliyeti yok.
 ##  - strike(): çarpma noktası çevresindeki parçalara enerji dağıtılır; dayanımını aşan
 ##    parçalar kopar ve darbe yönünde fırlar. Harcanan enerji çarpana geri bildirilir
 ##    (sağlam bina ağır kayayı durdurur, çürük kulübe delinip geçilir).
@@ -13,9 +12,6 @@ extends Node3D
 
 signal broke(building: Building)
 
-const DENSITY := {"concrete": 2000.0, "brick": 1800.0}
-## Parça dayanımı: J / m³ (katı hacim). Tuğla betondan zayıf.
-const STRENGTH := {"concrete": 55000.0, "brick": 38000.0}
 const MAX_SPAN := 2
 ## Kırılmayan parçaya düşen enerjinin kalıcı hasara dönüşen oranı
 const CRACK := 0.55
@@ -28,55 +24,8 @@ var max_span := float(MAX_SPAN)
 var hang_up := 0.0
 var crash_sound := "crash"
 var _by_name := {}
-var _intact_mesh: MeshInstance3D
-var _chunk_meshes: Array[MeshInstance3D] = []
 var _support_dirty := false
 var _total := 0
-
-
-func setup(model_name: String, inner_kind: String) -> void:
-	name = model_name
-	kind = inner_kind
-	var src: Node3D = load("res://assets/buildings/%s.scn" % model_name).instantiate()
-	_intact_mesh = src.get_node("Intact")
-	src.remove_child(_intact_mesh)
-	_intact_mesh.owner = null
-	add_child(_intact_mesh)
-	var holder := src.get_node("Chunks")
-	for mi: MeshInstance3D in holder.get_children():
-		holder.remove_child(mi)
-		mi.owner = null
-		var d := Destructible.new()
-		d.name = mi.name
-		d.position = mi.position
-		mi.position = Vector3.ZERO
-		mi.visible = false
-		d.add_child(mi)
-		d.add_hull(mi.get_meta("hull"))
-		var vol: float = mi.get_meta("volume")
-		d.configure(kind, vol * DENSITY[kind])
-		d.layer = mi.get_meta("layer")
-		d.neighbors = mi.get_meta("neighbors")
-		d.hp = vol * STRENGTH[kind]
-		# İkinci kademe kırılma: önceden hesaplanmış yarılar ya da döşeme kutusu
-		var halves := []
-		for h in mi.get_children():
-			if h is MeshInstance3D and h.name.begins_with("half"):
-				halves.append({"mesh": h.mesh, "hull": h.get_meta("hull"), "volume": h.get_meta("volume"), "offset": h.position})
-		for h in mi.get_children():
-			mi.remove_child(h)
-			h.free()
-		if halves.size() == 2:
-			d.make_splittable_halves(halves, STRENGTH[kind] * 0.35)
-		elif mi.has_meta("box"):
-			d.make_splittable(mi.get_meta("box"), (mi.mesh as BoxMesh).material, STRENGTH[kind] * 0.35)
-		d.building = self
-		d.make_intact()
-		add_child(d)
-		chunks.append(d)
-		_chunk_meshes.append(mi)
-		_by_name[d.name] = d
-	src.free()
 
 
 ## Bir noktaya çarpma: çevredeki sağlam bina parçalarına enerji uygular.
@@ -156,14 +105,9 @@ func _on_cracked(_d: Destructible, _point: Vector3) -> void:
 
 
 func _break_visual() -> void:
-	if broken:
-		return
-	broken = true
-	_intact_mesh.visible = false
-	for mi in _chunk_meshes:
-		mi.visible = true
-	Sfx.glass(global_position + Vector3.UP * 4.0)
-	broke.emit(self)
+	if not broken:
+		broken = true
+		broke.emit(self)
 
 
 func _mark_support_dirty() -> void:

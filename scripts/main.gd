@@ -275,14 +275,15 @@ func _build_castle() -> void:
 func _scatter_trees() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 41
-	for i in 26:
+	# Yalnız oyun alanının iki kenarında, kalenin hemen dışında (uzak süs yok)
+	for i in 14:
 		var side := -1.0 if i % 2 == 0 else 1.0
-		var pos := Vector3(side * rng.randf_range(125.0, 185.0), 0, rng.randf_range(-20.0, 420.0))
+		var pos := Vector3(side * rng.randf_range(110.0, 140.0), 0, rng.randf_range(-20.0, 400.0))
 		var body := StaticBody3D.new()
 		var visual := Models.instance("pine_b")
 		body.add_child(visual)
 		Models.fit(visual, rng.randf_range(9.0, 16.0), "height")
-		Models.visibility(visual, 320.0)
+		Models.visibility(visual, 260.0)
 		var trunk := CylinderShape3D.new()
 		trunk.radius = 0.35
 		trunk.height = 6.0
@@ -300,16 +301,16 @@ func _scatter_decor() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 99
 	var meshes := ["granite", "basalt", "mossy", "sandstone", "river_1", "river_2"]
-	for i in 18:
+	for i in 10:
 		var side := -1.0 if i % 2 == 0 else 1.0
 		var size := rng.randf_range(2.0, 7.0)
-		var pos := Vector3(side * rng.randf_range(120.0, 170.0), 0, rng.randf_range(-10.0, 420.0))
+		var pos := Vector3(side * rng.randf_range(105.0, 135.0), 0, rng.randf_range(-10.0, 400.0))
 		var body := StaticBody3D.new()
 		var mi := MeshInstance3D.new()
 		mi.mesh = load("res://assets/rocks/%s.res" % meshes[i % meshes.size()])
 		mi.scale = Vector3.ONE * size
 		mi.position.y = mi.mesh.get_aabb().size.y * size * 0.35
-		mi.visibility_range_end = 280.0
+		mi.visibility_range_end = 240.0
 		body.add_child(mi)
 		var sh := SphereShape3D.new()
 		sh.radius = size * 0.4

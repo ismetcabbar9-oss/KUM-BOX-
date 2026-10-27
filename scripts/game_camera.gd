@@ -18,7 +18,7 @@ func _ready() -> void:
 	physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
 	fov = 62.0
 	near = 0.2
-	far = 1500.0
+	far = 900.0  # oyun alanı ~500 m: uzağı çizme
 
 
 func orbit(dx: float, dy: float) -> void:

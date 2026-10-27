@@ -15,8 +15,6 @@ var _cooldown := 0.0
 var _rubble: Array[GPUParticles3D] = []
 var _rubble_next := 0
 var _soft_tex: GradientTexture2D
-var _glass_mat: StandardMaterial3D
-var _glass_pm: ParticleProcessMaterial
 var _bricks: Array[GPUParticles3D] = []
 var _bricks_next := 0
 var _marks: Array[Decal] = []
@@ -285,49 +283,6 @@ func big_dust(pos: Vector3) -> void:
 	_big_next = (_big_next + 1) % BIG_DUST_POOL
 	p.global_position = pos
 	p.restart()
-
-
-## Cam kırıkları: parlak küçük üçgenimsi parçalar, zemine çarpıp seker
-func glass_shards(pos: Vector3, size: Vector3) -> void:
-	if _glass_mat == null:
-		_glass_mat = StandardMaterial3D.new()
-		_glass_mat.albedo_color = Color(0.8, 0.92, 0.95, 0.55)
-		_glass_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		_glass_mat.metallic = 0.3
-		_glass_mat.roughness = 0.05
-		_glass_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
-		var pm := ParticleProcessMaterial.new()
-		pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
-		pm.direction = Vector3.UP
-		pm.spread = 120.0
-		pm.initial_velocity_min = 1.0
-		pm.initial_velocity_max = 5.0
-		pm.gravity = Vector3(0, -9.8, 0)
-		pm.angular_velocity_min = -720.0
-		pm.angular_velocity_max = 720.0
-		pm.scale_min = 0.5
-		pm.scale_max = 1.5
-		pm.collision_mode = ParticleProcessMaterial.COLLISION_RIGID
-		pm.collision_bounce = 0.3
-		pm.collision_friction = 0.5
-		_glass_pm = pm
-	var p := GPUParticles3D.new()
-	var pm2 := _glass_pm.duplicate() as ParticleProcessMaterial
-	pm2.emission_box_extents = size * 0.5
-	p.process_material = pm2
-	var q := QuadMesh.new()
-	q.size = Vector2(0.18, 0.12)
-	q.material = _glass_mat
-	p.draw_pass_1 = q
-	p.amount = clampi(int((size.x + size.y + size.z) * 10.0), 12, 48)
-	p.lifetime = 3.0
-	p.one_shot = true
-	p.explosiveness = 1.0
-	p.visibility_aabb = AABB(Vector3(-8, -6, -8), Vector3(16, 14, 16))
-	add_child(p)
-	p.global_position = pos
-	p.emitting = true
-	get_tree().create_timer(3.5, true, false, true).timeout.connect(p.queue_free)
 
 
 func rubble(pos: Vector3, direction: Vector3, amount: float) -> void:

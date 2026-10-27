@@ -3,9 +3,8 @@
 import hashlib, json, os, urllib.request
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 UA = {"User-Agent": "Mozilla/5.0"}
-TEXTURES = ["rocky_terrain_02", "concrete_floor_worn_001", "red_brick_03", "rough_concrete",
-            "rough_wood", "metal_plate", "rusty_metal_02", "castle_wall_slates", "medieval_blocks_03",
-            "rock_boulder_dry"]
+TEXTURES = ["rocky_terrain_02", "concrete_floor_worn_001", "rough_concrete",
+            "rough_wood", "metal_plate", "rusty_metal_02", "rock_boulder_dry"]
 
 
 def get(u):

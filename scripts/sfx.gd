@@ -21,7 +21,6 @@ func _ready() -> void:
 		"metal": _load_set("metal_impact_", 3),
 		"debris": _load_set("debris_", 6),
 		"crash": _load_set("crash_big_", 3),
-		"glass": _load_set("glass_", 3),
 		"explosion": _load_set("explosion_", 3),
 		"catapult": _load_set("catapult_", 2),
 		"sling": _load_set("sling_", 3),
@@ -29,7 +28,6 @@ func _ready() -> void:
 		"creak": _load_set("creak_", 2),
 		"stone_crash": _load_set("stone_crash_", 2),
 		"rocket_ignite": _load_set("rocket_ignite_", 1),
-		"chain": _load_set("chain_", 2),
 		"beep": _load_set("beep_", 1),
 		"horn": _load_set("horn_", 2),
 		"scream": _load_set("scream_", 8),
@@ -152,10 +150,6 @@ func impact(kind: String, pos: Vector3, strength: float) -> void:
 
 func crash(pos: Vector3, set_name := "crash") -> void:
 	_play(set_name, pos, 4.0, randf_range(0.9, 1.05))
-
-
-func glass(pos: Vector3) -> void:
-	_play("glass", pos, -2.0, randf_range(0.9, 1.1))
 
 
 func debris(pos: Vector3, strength: float) -> void:

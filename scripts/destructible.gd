@@ -27,7 +27,6 @@ var split_size := Vector3.ZERO
 var split_material: Material
 var split_energy_density := 0.0  # J/m³
 var _splitting := false
-var split_halves := []
 var split_gen := 0
 ## Örgü yapı bloğu: sert darbede / hızla koptuğunda BrickPool tuğlalara ayırır
 var shatter_pool: Node = null
@@ -70,14 +69,6 @@ func add_cylinder(radius: float, height: float) -> void:
 	var shape := CylinderShape3D.new()
 	shape.radius = radius
 	shape.height = height
-	var cs := CollisionShape3D.new()
-	cs.shape = shape
-	add_child(cs)
-
-
-func add_hull(points: PackedVector3Array) -> void:
-	var shape := ConvexPolygonShape3D.new()
-	shape.points = points
 	var cs := CollisionShape3D.new()
 	cs.shape = shape
 	add_child(cs)
@@ -191,12 +182,6 @@ func thaw() -> void:
 		set_physics_process(true)
 
 
-## Önceden hesaplanmış iki yarı (bina parçaları): {mesh, hull, volume, offset}
-func make_splittable_halves(halves: Array, energy_density: float) -> void:
-	split_halves = halves
-	split_energy_density = energy_density
-
-
 func _try_split(energy: float) -> void:
 	if shatter_pool:
 		if hit_point == Vector3.INF:
@@ -213,14 +198,6 @@ func _try_split(energy: float) -> void:
 		_budget_used = 0
 	if _budget_used >= MAX_SPLITS_PER_FRAME:
 		return
-	if not split_halves.is_empty():
-		var v: float = split_halves[0]["volume"] + split_halves[1]["volume"]
-		if energy >= v * split_energy_density:
-			_splitting = true
-			_budget_used += 1
-			spawned += 2
-			_split_halves.call_deferred()
-		return
 	if split_size == Vector3.ZERO:
 		return
 	var vol := split_size.x * split_size.y * split_size.z
@@ -234,34 +211,6 @@ func _try_split(energy: float) -> void:
 	_budget_used += 1
 	spawned += 2
 	_split.call_deferred(axis)
-
-
-func _split_halves() -> void:
-	if not is_inside_tree():
-		return
-	var total: float = split_halves[0]["volume"] + split_halves[1]["volume"]
-	for h in split_halves:
-		var d := Destructible.new()
-		var mi := MeshInstance3D.new()
-		mi.mesh = h["mesh"]
-		d.add_child(mi)
-		d.add_hull(h["hull"])
-		d.configure(material_kind, mass * float(h["volume"]) / total)
-		d.split_gen = MAX_GEN
-		get_parent().add_child(d)
-		var off: Vector3 = h["offset"]
-		d.global_transform = global_transform * Transform3D(Basis.IDENTITY, off)
-		var sep := (global_transform.basis * off).normalized()
-		d.linear_velocity = linear_velocity + sep * 1.2
-		d.angular_velocity = angular_velocity
-		d.sleeping = false
-		d.set_physics_process(true)
-	Sfx.debris(global_position, 10.0)
-	Fx.dust(global_position, 1.2)
-	Fx.rubble(global_position, Vector3.UP, 0.7)
-	if building and building.has_method("forget"):
-		building.forget(self)
-	queue_free()
 
 
 ## İki parçaya böl: hız ve dönüş korunur, parçalar kesik yönünde hafifçe ayrılır.
