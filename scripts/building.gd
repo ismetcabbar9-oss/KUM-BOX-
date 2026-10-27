@@ -31,7 +31,8 @@ var _total := 0
 ## Bir noktaya çarpma: çevredeki sağlam bina parçalarına enerji uygular.
 ## Döner: harcanan (kırılmaya giden) enerji.
 static func strike(world: World3D, point: Vector3, energy: float, direction: Vector3, exclude: Object = null) -> float:
-	var radius := clampf(0.8 + 0.45 * pow(energy / 10000.0, 1.0 / 3.0), 1.0, 8.0)
+	# Üst sınır: yalnız çok büyük darbeler (dev mermi, büyük patlama) 8 m üstüne çıkar
+	var radius := clampf(0.8 + 0.45 * pow(energy / 10000.0, 1.0 / 3.0), 1.0, 12.0)
 	var q := PhysicsShapeQueryParameters3D.new()
 	var sphere := SphereShape3D.new()
 	sphere.radius = radius

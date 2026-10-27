@@ -37,6 +37,8 @@ var size_index := 2
 var quality := 1
 var _touches := {}
 var _stat_timer := 0.0
+var _save_timer := 3.0
+var _last_displaced := 0
 var _destructibles: Array[Node] = []
 var _buildings: Array[Building] = []
 var crew: Crew
@@ -81,8 +83,21 @@ func _ready() -> void:
 		ammo_index = (ammo_index + 1) % Projectile.ORDER.size()
 		_reload_if_waiting())
 	hud.size_pressed.connect(func() -> void:
-		size_index = (size_index + 1) % SIZES.size()
+		# Yalnız fırlatıcının seviyesinin açtığı boyutlar
+		size_index = (size_index + 1) % (_max_size() + 1)
 		_reload_if_waiting())
+	hud.upgrade_requested.connect(func(id: String) -> void:
+		if Progress.upgrade(id):
+			Sfx.play("horn", camera.global_position, -6.0)
+			for l: Launcher in launchers:
+				if l.id == id:
+					l.power = Progress.power(id)
+			if id == "trebuchet":
+				var tb: Trebuchet = launchers[1]
+				tb.max_counterweight = Progress.TREBUCHET_CW[Progress.level(id)]
+			hud.refresh_upgrades()
+			hud.set_points(Progress.points())
+			_reload_if_waiting())
 	hud.reset_pressed.connect(func() -> void:
 		Engine.time_scale = 1.0
 		Sfx.set_slow_motion(false)
@@ -218,8 +233,8 @@ func _build_launchers() -> void:
 	var deck_y := RAMP_H
 	_build_deck(Vector3(0, 0, -24), deck_y)
 	var tb := Trebuchet.new()
-	tb.max_counterweight = 1200.0
-	tb.counterweight_t = 295.0
+	tb.max_counterweight = Progress.TREBUCHET_CW[Progress.level("trebuchet")]
+	tb.counterweight_t = minf(295.0, tb.max_counterweight)
 	tb.yaw_deg = -2.5  # kapı değil, ön sur
 	tb.base_radius = 1.0
 	# Uzun kol: karşı ağırlık en fazla serbest düşüşle iner; menzili kol oranı belirler
@@ -249,6 +264,7 @@ func _build_deck(center: Vector3, top: float) -> void:
 
 func _add_launcher(l: Launcher, pos: Vector3) -> void:
 	l.position = pos
+	l.power = Progress.power(l.id)
 	add_child(l)
 	l.fired.connect(_on_fired)
 	launchers.append(l)
@@ -274,6 +290,8 @@ func _build_castle() -> void:
 	add_child(crowd_node)
 	crowd_node.build(castle)
 	_soldiers = crowd_node.figures
+	for f in _soldiers:
+		f.died.connect(func(_s: Soldier) -> void: Progress.add_points(5))
 
 
 ## Çevre ağaçları: statik, gövde çarpışmalı, uzakta görünmez
@@ -338,6 +356,11 @@ func _select_launcher(i: int) -> void:
 	_reload()
 
 
+## Seçili fırlatıcının seviyesine göre açık en büyük boyut
+func _max_size() -> int:
+	return mini(Progress.max_size(launcher.id), SIZES.size() - 1)
+
+
 func _reload_if_waiting() -> void:
 	if launcher.is_ready():
 		_discard(launcher.loaded)
@@ -362,6 +385,7 @@ func _reload() -> void:
 		var old = projectiles.pop_front()
 		if is_instance_valid(old):
 			old.queue_free()
+	size_index = mini(size_index, _max_size())
 	var ammo: String = Projectile.ORDER[ammo_index]
 	if launcher.forced_ammo() != "":
 		ammo = launcher.forced_ammo()
@@ -394,7 +418,8 @@ func _on_fire_pressed() -> void:
 
 
 ## Büyük an: ~3 sn (gerçek zaman) ağır çekim, olayın çevresinde dönen sinematik kamera
-func _on_big_event(pos: Vector3, _kind: String) -> void:
+func _on_big_event(pos: Vector3, kind: String) -> void:
+	Progress.add_points(50 if kind == "tower" else 30)
 	var args := OS.get_cmdline_user_args()
 	if _cine_cd > 0.0 or ("--autotest" in args and not "--cine" in args):
 		return
@@ -432,6 +457,12 @@ func _update_cine(delta: float) -> void:
 		Sfx.set_slow_motion(_slow_user)
 
 
+func _notification(what: int) -> void:
+	# Sahne yenilenirken / uygulama arka plana alınırken / kapanırken ilerlemeyi yaz
+	if what in [NOTIFICATION_EXIT_TREE, NOTIFICATION_WM_CLOSE_REQUEST, NOTIFICATION_APPLICATION_PAUSED]:
+		Progress.save()
+
+
 func _restart() -> void:
 	Engine.time_scale = 1.0
 	Sfx.set_slow_motion(false)
@@ -465,7 +496,16 @@ func _process(delta: float) -> void:
 	if _stat_timer <= 0.0:
 		_stat_timer = 0.5
 		var spd := current.speed_kmh() if is_instance_valid(current) else 0.0
-		hud.set_stats(spd, _count_displaced(), _destructibles.size())
+		var disp := _count_displaced()
+		# Puan: her yıkılan blok 1
+		Progress.add_points(disp - _last_displaced)
+		_last_displaced = maxi(_last_displaced, disp)
+		hud.set_stats(spd, disp, _destructibles.size())
+		hud.set_points(Progress.points())
+		_save_timer -= 0.5
+		if _save_timer <= 0.0:
+			_save_timer = 3.0
+			Progress.save()
 		var draws := int(RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME))
 		hud.set_fps(int(Engine.get_frames_per_second()), "%d çizim" % draws)
 	hud.set_info(launcher.info() if launcher.is_ready() else "")
@@ -572,6 +612,17 @@ func _autotest() -> void:
 				await get_tree().physics_frame
 			var bb := castle.bridge.body
 			print("köprü açı=%.0f° uç=%s" % [rad_to_deg(castle.bridge._angle), bb.to_global(Vector3(0, 0, 8)).round()])
+		get_tree().quit()
+		return
+	if "--masses" in args:
+		for ammo in Projectile.ORDER:
+			var line: String = ammo + ":"
+			for sz in SIZES:
+				var p := Projectile.new()
+				p.setup(ammo, launcher.base_radius * sz["k"], launcher.rolling())
+				line += "  %.1f t" % (p.mass / 1000.0)
+				p.free()
+			print(line)
 		get_tree().quit()
 		return
 	if "--shots-ui" in args:

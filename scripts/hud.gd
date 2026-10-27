@@ -13,6 +13,7 @@ signal quality_pressed
 signal option_pressed
 signal mission_selected(id: String)
 signal result_action(action: String)
+signal upgrade_requested(id: String)
 
 var speed_label: Label
 var destroy_label: Label
@@ -27,6 +28,10 @@ var fps_label: Label
 var quality_button: Button
 var credits_panel: PanelContainer
 var settings_panel: PanelContainer
+var upgrade_panel: PanelContainer
+var points_label: Label
+var _upgrade_list: VBoxContainer
+var _upgrade_points: Label
 var _slow_button: Button
 var _fps_button: Button
 var _banner: Label
@@ -91,6 +96,9 @@ func _ready() -> void:
 	stats.add_child(speed_label)
 	destroy_label = Label.new()
 	stats.add_child(destroy_label)
+	points_label = Label.new()
+	points_label.add_theme_color_override("font_color", Color(1.0, 0.82, 0.3))
+	stats.add_child(points_label)
 	info_label = Label.new()
 	info_label.add_theme_font_size_override("font_size", 24)
 	info_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.45))
@@ -108,6 +116,11 @@ func _ready() -> void:
 	var mis := _button(top, "GÖREVLER", func() -> void: missions_panel.visible = not missions_panel.visible)
 	mis.custom_minimum_size = Vector2(170, 56)
 	mis.add_theme_font_size_override("font_size", 20)
+	var up := _button(top, "GELİŞTİR", func() -> void:
+		refresh_upgrades()
+		upgrade_panel.visible = not upgrade_panel.visible)
+	up.custom_minimum_size = Vector2(170, 56)
+	up.add_theme_font_size_override("font_size", 20)
 	var st := _button(top, "AYARLAR", func() -> void: settings_panel.visible = not settings_panel.visible)
 	st.custom_minimum_size = Vector2(170, 56)
 	st.add_theme_font_size_override("font_size", 20)
@@ -171,7 +184,9 @@ func _ready() -> void:
 	missions_panel = _panel(root)
 	result_panel = _panel(root)
 	settings_panel = _panel(root)
+	upgrade_panel = _panel(root)
 	_build_missions_panel()
+	_build_upgrade_panel()
 	_build_settings_panel()
 
 	# Lisans paneli (CC-BY atıfları oyunda gösterilmeli)
@@ -277,6 +292,45 @@ func _build_settings_panel() -> void:
 	fps_label.visible = "--autotest" in OS.get_cmdline_user_args()
 
 
+func set_points(p: int) -> void:
+	points_label.text = "Puan: %d" % p
+
+
+## Geliştirme paneli: puan + her fırlatıcının seviyesi ve yükseltme düğmesi
+func _build_upgrade_panel() -> void:
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 10)
+	upgrade_panel.add_child(box)
+	_title(box, "GELİŞTİR")
+	_upgrade_points = _title(box, "", 24)
+	_upgrade_points.add_theme_color_override("font_color", Color(1.0, 0.82, 0.3))
+	_upgrade_list = VBoxContainer.new()
+	_upgrade_list.add_theme_constant_override("separation", 8)
+	box.add_child(_upgrade_list)
+	_title(box, "Kale yıkarak puan kazan: blok 1, figür 5, kule 50, görev yıldızı 100", 18)
+	var close := _button(box, "KAPAT", func() -> void: upgrade_panel.visible = false)
+	close.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+
+
+func refresh_upgrades() -> void:
+	_upgrade_points.text = "Puan: %d" % Progress.points()
+	for c in _upgrade_list.get_children():
+		c.queue_free()
+	for l in Progress.LAUNCHERS:
+		var id: String = l["id"]
+		var lv := Progress.level(id)
+		var txt := "%s  Sv %d/%d" % [l["name"], lv, Progress.MAX_LEVEL]
+		if lv < Progress.MAX_LEVEL:
+			txt += "  →  %s  (%d puan)" % [Progress.next_text(id), Progress.COST[lv + 1]]
+		else:
+			txt += "  (en üst seviye)"
+		var b := _button(_upgrade_list, txt, func() -> void: upgrade_requested.emit(id))
+		b.custom_minimum_size = Vector2(620, 58)
+		b.add_theme_font_size_override("font_size", 19)
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		b.disabled = lv >= Progress.MAX_LEVEL or Progress.points() < Progress.COST[lv + 1]
+
+
 ## Görev başında hedefi ekranın ortasında kısa süre göster
 func show_banner(m: Dictionary) -> void:
 	_banner.text = "%s\n%s\nEn çok %d atış" % [m["title"], m["goal"], m["limit"]]
@@ -294,7 +348,7 @@ func _process(delta: float) -> void:
 
 
 func is_over_ui(pos: Vector2) -> bool:
-	if credits_panel.visible or missions_panel.visible or result_panel.visible or settings_panel.visible:
+	if credits_panel.visible or missions_panel.visible or result_panel.visible or settings_panel.visible or upgrade_panel.visible:
 		return true
 	for b in get_tree().get_nodes_in_group("hud_button"):
 		if (b as Control).get_global_rect().has_point(pos):

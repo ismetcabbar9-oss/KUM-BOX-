@@ -7,6 +7,10 @@ signal fired(projectile: Projectile)
 
 ## Ekranda görünen ad
 var title := ""
+## Kalıcı ilerleme anahtarı (Progress.LAUNCHERS)
+var id := ""
+## Seviye güç çarpanı (Progress.POWER): top/sapan/roket kızağı
+var power := 1.0
 ## Mermi yarıçapı ölçeği (BOYUT ile çarpılır)
 var base_radius := 1.0
 var loaded: Projectile

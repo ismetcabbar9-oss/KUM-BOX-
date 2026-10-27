@@ -43,7 +43,7 @@ otomatik test + ekran görüntüsü + commit + ZIP.
 - [x] Kademe 0: temizlik (kullanılmayan dosya/kod, oyun alanı kenarları)
 - [x] Kademe 1: hafifletme (~3000 blok, iri tuğla parçaları, stilize grafik, düşük/orta cihaz ayarları, 30 figür)
 - [x] Kademe 2: düzen ve görevler (sıralı görev zinciri, açılışta görev, sade arayüz)
-- [ ] Kademe 3: puan ve yükseltme (yıkım/yıldız puanı; mancınık ve diğer fırlatıcılar seviye atladıkça
+- [x] Kademe 3: puan ve yükseltme (yıkım/yıldız puanı; mancınık ve diğer fırlatıcılar seviye atladıkça
       daha ağır mermi; en üst seviyede dev kaya)
 - [ ] Kademe 4: yeni rampa/fırlatıcı fikirleri, ilk bölüm şablonuyla sonraki bölümler
 

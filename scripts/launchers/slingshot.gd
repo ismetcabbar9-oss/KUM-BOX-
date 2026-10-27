@@ -27,6 +27,7 @@ var _k_scale := 1.0
 func _init() -> void:
 	super()
 	title = "DEV SAPAN"
+	id = "slingshot"
 	base_radius = 0.6
 	view_distance = 18.0
 
@@ -88,7 +89,7 @@ func _place() -> void:
 func _launch_speed() -> Vector3:
 	# Enerji korunumu: ½kx² = ½mv²  ->  v = x·√(k/m)
 	var x := pull.length()
-	var v := x * sqrt(K * _k_scale / loaded.mass) * 0.92
+	var v := x * sqrt(K * _k_scale * power / loaded.mass) * 0.92
 	return global_transform.basis * (-pull.normalized() * v)
 
 
@@ -158,7 +159,7 @@ func _physics_process(delta: float) -> void:
 	if x.dot(fwd) <= 0.0 or _spring_time > 1.0:
 		_spring_body = null
 		return
-	_spring_body.apply_central_force(x * K * _k_scale)
+	_spring_body.apply_central_force(x * K * _k_scale * power)
 
 
 func _process(_delta: float) -> void:

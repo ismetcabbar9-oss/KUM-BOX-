@@ -20,6 +20,12 @@ var release_deg := 48.0
 
 var counterweight_t := 90.0  # ton
 var max_counterweight := 180.0
+## Ağır mermi: kol ve karşı ağırlık mermiyle aynı oranda büyür (tüm kütleler aynı oranda
+## ölçeklenince hareket değişmez: dev kaya, MASS_REF'lik taşla aynı yörüngede uçar).
+## Gerçekte imkânsız oranlar oyunda "güçlendirilmiş mancınık" olarak ele alınır.
+const MASS_REF := 6000.0
+const ARM_MASS := 3200.0
+var _scale := 1.0
 var yaw_deg := 0.0
 var arm: RigidBody3D
 var cw: RigidBody3D
@@ -42,6 +48,7 @@ var _iron: Material
 func _init() -> void:
 	super()
 	title = "MANCINIK"
+	id = "trebuchet"
 	base_radius = 0.6
 	view_distance = 22.0
 
@@ -80,7 +87,7 @@ func _ready() -> void:
 	arm.name = "Arm"
 	_arm_rest = Transform3D(Basis(Vector3.RIGHT, deg_to_rad(-COCK_DEG)), Vector3(0, pivot_h, 0))
 	arm.transform = _arm_rest
-	arm.mass = 3200.0
+	arm.mass = ARM_MASS
 	_arm_box(Vector3(0.5, 0.6, l_long + l_short), Vector3(0, 0, (l_short - l_long) * 0.5), _wood)
 	_arm_box(Vector3(1.8, 0.15, 1.8), Vector3(0, 0.375, -l_long + 0.9), _iron)  # kaşık tabanı
 	# Alçak dudaklar: kurulu dururken mermiyi tutar, kol durunca mermi üstünden aşar
@@ -175,7 +182,7 @@ func predict_release() -> Array:
 	if _table.is_empty() or loaded == null:
 		return []
 	var ci := _bracket(_table["cw"], counterweight_t, false)
-	var mi := _bracket(_table["mass"], loaded.mass, true)
+	var mi := _bracket(_table["mass"], loaded.mass / _scale, true)
 	var data: Array = _table["data"]
 	var acc := PackedFloat64Array([0, 0, 0, 0, 0, 0])
 	for dc in 2:
@@ -339,6 +346,9 @@ func load_projectile(p: Projectile) -> void:
 	arm.reset_physics_interpolation()
 	cw.reset_physics_interpolation()
 	loaded = p
+	_scale = maxf(1.0, p.mass / MASS_REF)
+	arm.mass = ARM_MASS * _scale
+	cw.mass = counterweight_t * 1000.0 * _scale
 	p.add_collision_exception_with(cw)
 	p.global_transform = Transform3D(global_transform.basis, _cup_point(p.radius))
 	p.reset_physics_interpolation()
@@ -350,7 +360,7 @@ func drag(relative: Vector2, _vs: Vector2) -> void:
 	yaw_deg = clampf(yaw_deg - relative.x * 0.12, -35.0, 35.0)
 	rotation_degrees.y = yaw_deg
 	counterweight_t = clampf(counterweight_t - relative.y * 0.2 * max_counterweight / 180.0, 30.0, max_counterweight)
-	cw.mass = counterweight_t * 1000.0
+	cw.mass = counterweight_t * 1000.0 * _scale
 	loaded.global_transform = Transform3D(global_transform.basis, _cup_point(loaded.radius))
 
 
@@ -392,7 +402,7 @@ func _physics_process(_delta: float) -> void:
 
 
 func info() -> String:
-	var t := "Yön %+d°   Karşı ağırlık %d t" % [roundi(yaw_deg), roundi(counterweight_t)]
+	var t := "Yön %+d°   Karşı ağırlık %d t" % [roundi(yaw_deg), roundi(counterweight_t * _scale)]
 	if not _table.is_empty():
 		t += ("   Menzil ~%d m" % roundi(_aim_range)) if _aim_range > 0.0 else "   Karşı ağırlık yetersiz"
 	return t

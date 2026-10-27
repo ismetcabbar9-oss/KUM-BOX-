@@ -26,6 +26,7 @@ var _push_from := Vector3.ZERO
 func _init() -> void:
 	super()
 	title = "RAMPA"
+	id = "ramp"
 	base_radius = 2.0
 	view_distance = 16.0
 

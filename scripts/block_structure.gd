@@ -11,7 +11,8 @@ extends Building
 
 const MATERIALS := {
 	"wood": {"kind": "wood", "density": 650.0, "strength": 9000.0, "split": 2500.0},
-	"masonry": {"kind": "stone", "density": 2300.0, "strength": 8000.0, "split": 0.0},
+	# Dayanım: 6,5 m'lik iri blokta kopma eşiği eski 4,5 m'lik bloğa yakın kalsın
+	"masonry": {"kind": "stone", "density": 2300.0, "strength": 6500.0, "split": 0.0},
 }
 const GAP := 0.03
 

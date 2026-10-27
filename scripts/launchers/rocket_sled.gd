@@ -22,6 +22,7 @@ var _steel: Material
 func _init() -> void:
 	super()
 	title = "ROKET KIZAĞI"
+	id = "rocket"
 	base_radius = 0.6
 	view_distance = 14.0
 
@@ -201,7 +202,7 @@ func _physics_process(delta: float) -> void:
 		return
 	# İtki: ~13 m/s² (güç ayarıyla). Mermi kızağın beşiğinde: aynı ivmeyi alır (beşiğin
 	# itişi), böylece ağır/büyük mermi de kızaktan kaymaz.
-	var a := global_transform.basis.z * 13.0 * thrust_pct / 100.0
+	var a := global_transform.basis.z * 13.0 * thrust_pct / 100.0 * power
 	sled.apply_central_force(a * sled.mass)
 	if is_instance_valid(loaded) and loaded.global_position.distance_to(sled.global_position) < loaded.radius + SLED.z:
 		loaded.apply_central_force(a * loaded.mass)

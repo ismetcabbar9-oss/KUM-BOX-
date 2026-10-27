@@ -119,6 +119,9 @@ func _finish(success: bool) -> void:
 	if success:
 		var s: Array = mission["stars"]
 		st = 3 if shots <= int(s[0]) else (2 if shots <= int(s[1]) else 1)
+		# Ödül: başarı + yeni kazanılan yıldızlar (aynı yıldızı tekrar almak az kazandırır)
+		var prev := int(Missions.load_stars().get(mission["id"], 0))
+		Progress.add_points(20 + maxi(st - prev, 0) * 100)
 		Missions.save_stars(mission["id"], st)
 	finished.emit(success, st)
 	hud.show_result(mission, success, st, shots)

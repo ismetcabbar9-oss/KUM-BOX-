@@ -2,7 +2,7 @@ class_name Missions
 extends RefCounted
 ## Kuşatma görevleri (aynı kale, farklı hedefler). stars: [3 yıldız için en çok atış, 2 yıldız için]
 ## Görevler sırayla açılır: bir görev, öncekinden en az 1 yıldız alınınca açılır.
-## Kayıt: user://kaya_save.json -> {"stars": {görev: yıldız}}
+## Kayıt: Progress (user://kaya_save.json)
 
 const LIST := [
 	{"id": "bridge", "title": "ASMA KÖPRÜ", "goal": "Asma köprüyü indir", "limit": 6, "stars": [2, 4]},
@@ -13,7 +13,6 @@ const LIST := [
 	{"id": "flag", "title": "SANCAK", "goal": "Ana kulenin sancağını yere indir", "limit": 12, "stars": [5, 8]},
 	{"id": "raze", "title": "YERLE BİR", "goal": "Kalenin %40'ını yık", "limit": 40, "stars": [20, 30]},
 ]
-const SAVE := "user://kaya_save.json"
 
 
 static func find(id: String) -> Dictionary:
@@ -50,16 +49,8 @@ static func next_of(id: String) -> String:
 
 
 static func load_stars() -> Dictionary:
-	var txt := FileAccess.get_file_as_string(SAVE)
-	if txt == "":
-		return {}
-	var d = JSON.parse_string(txt)
-	return d.get("stars", {}) if d is Dictionary else {}
+	return Progress.stars()
 
 
 static func save_stars(id: String, stars: int) -> void:
-	var all := load_stars()
-	all[id] = maxi(int(all.get(id, 0)), stars)
-	var f := FileAccess.open(SAVE, FileAccess.WRITE)
-	if f:
-		f.store_string(JSON.stringify({"stars": all}))
+	Progress.set_stars(id, stars)

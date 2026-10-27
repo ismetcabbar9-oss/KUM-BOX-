@@ -17,6 +17,7 @@ var _barrel: MeshInstance3D
 func _init() -> void:
 	super()
 	title = "HAVA TOPU"
+	id = "cannon"
 	base_radius = 0.5
 	view_distance = 14.0
 
@@ -91,7 +92,7 @@ func _place() -> void:
 
 
 func _speed() -> float:
-	return minf(sqrt(2.0 * ENERGY * pow(loaded.radius / base_radius, 3.0) / loaded.mass), 46.0)
+	return minf(sqrt(2.0 * ENERGY * power * pow(loaded.radius / base_radius, 3.0) / loaded.mass), 46.0 * sqrt(power))
 
 
 func drag(relative: Vector2, _vs: Vector2) -> void:

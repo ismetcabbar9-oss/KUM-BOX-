@@ -1,4 +1,4 @@
-# Kaya Yuvarla — prototip v1.4
+# Kaya Yuvarla — prototip v1.5
 
 Geliştirme planı: [PLAN.md](PLAN.md) (kademeli aşamalar).
 
@@ -34,6 +34,21 @@ Sapan ve topta sarı noktalar tahmini yörüngeyi gösterir.
 **Mermiler:** **Üçlü testere** (havada ±8° açıyla üç diske ayrılır), **Yapışkan bomba** (değdiği yere yapışır, hızlanan bip sesleriyle 1,8 sn sonra patlar; hareketli gövdeye iğnelenir).
 
 **Engeller:** dönen çelik pervane (kinematik), sallanan yıkım gülle sarkacı (gerçek menteşe), konteyner yığınları, beton bariyerler, tuğla duvar, variller, sandıklar, taşlar.
+
+## v1.5 (Kademe 3: puan ve yükseltme)
+- Puan (kalıcı): yıkılan blok 1, düşen figür 5, çöken kule 50, inen köprü/sancak 30, görev başarısı
+  20 + yeni kazanılan her yıldız 100. Sol üstte "Puan", kayıt user://kaya_save.json.
+- GELİŞTİR paneli: her fırlatıcı 3 seviye (Sv 2: 500 puan, Sv 3: 1500 puan).
+  - Seviye en büyük mermi boyutunu açar: Sv 1 ORTA, Sv 2 BÜYÜK, Sv 3 DEV. BOYUT düğmesi yalnız
+    açık boyutlar arasında döner.
+  - Mancınık: karşı ağırlık sınırı 450 / 800 / 1200 t (Sv 1 iç sura, Sv 2 ana kulenin ötesine atar).
+  - Hava topu, sapan, roket kızağı: güç +%30 / +%60.
+- Dev kaya artık atılabiliyor: ağır mermide mancınığın kolu ve karşı ağırlığı mermiyle aynı oranda
+  büyür (tüm kütleler aynı oranda büyüyünce hareket değişmez). Dev granit 60 t, dev bazalt 87 t, dev
+  çelik 350 t orta taşla aynı yörüngede uçar; nişan yardımı geçerli kalır.
+- Büyük darbe yarıçapı sınırı 8 → 12 m: dev mermi orta taşın ~4 katı yıkar (~90 blok / 22 blok).
+- Kesme taş dayanımı 8000 → 6500 J/m³: iri blokların kopma eşiği eski bloklara yakın (sapan/top
+  orta boyutta da blok koparabilir).
 
 ## v1.4 (Kademe 2: düzen ve görevler)
 - Görevler sıralı zincir: Asma Köprü → Kapı Kuleleri → Gedik → Avlu Baskını → Komutan → Sancak →
@@ -251,7 +266,7 @@ python3 tools/fetch_textures.py
 godot --headless --path . --fixed-fps 60 -- --autotest --launcher=1 --ammo=saw
 ```
 `--map=castle` kale haritası, `--siege=N` N gerçek atış, `--siege-synth=N` N yapay darbe (`--energy=7e6` darbe enerjisi, J), `--cw=TON` kale mancınığı karşı ağırlığı.
-`--launcher`: 0 rampa, 1 mancınık, 2 sapan, 3 top, 4 roket kızağı, 5 yıkım vinci (`--cut=SN` SN saniye sonra zinciri keser). `--ramp=0..3` rampa türü. `--ammo`: granite, basalt, mossy, sandstone, river, saw, steel, bomb, multisaw, sticky, fire. `--shots5` ateş güllesi görüntüleri. `--trace` ilk 2,5 sn'yi adım adım yazar.
+`--launcher`: 0 rampa, 1 mancınık, 2 sapan, 3 top, 4 roket kızağı, 5 yıkım vinci (`--cut=SN` SN saniye sonra zinciri keser). `--ramp=0..3` rampa türü. `--ammo`: granite, basalt, mossy, sandstone, river, saw, steel, bomb, multisaw, sticky, fire. `--shots5` ateş güllesi görüntüleri. `--level=N` fırlatıcı seviyesi (testte varsayılan 3), `--masses` mermi kütleleri. `--trace` ilk 2,5 sn'yi adım adım yazar.
 `-- --autotest --shots` ekran görüntüsü alır (görüntülü ortam gerekir).
 
 ## Yol haritası
