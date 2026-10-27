@@ -39,6 +39,14 @@ otomatik test + ekran görüntüsü + commit + ZIP.
 - [x] 29 asker (kuleler, surlar, avlu).
 - [x] Kale haritasında güçlendirilmiş mancınık rampanın tepesinde.
 
+## Oynanabilirlik planı (v1.2 →): sade, mobilde akıcı, net hedefli
+- [x] Kademe 0: temizlik (kullanılmayan dosya/kod, oyun alanı kenarları)
+- [x] Kademe 1: hafifletme (~3000 blok, iri tuğla parçaları, stilize grafik, düşük/orta cihaz ayarları, 30 figür)
+- [x] Kademe 2: düzen ve görevler (sıralı görev zinciri, açılışta görev, sade arayüz)
+- [ ] Kademe 3: puan ve yükseltme (yıkım/yıldız puanı; mancınık ve diğer fırlatıcılar seviye atladıkça
+      daha ağır mermi; en üst seviyede dev kaya)
+- [ ] Kademe 4: yeni rampa/fırlatıcı fikirleri, ilk bölüm şablonuyla sonraki bölümler
+
 ## Yaşayan Kale planı (v0.8 → v1.0)
 - [x] A: İç içe kale (dış/iç halka, ana kule, hendek, asma köprü, avlu binaları, sancak)
 - [x] B: Daha küçük tuğla (0,75 m) + görsel tuğla parçacıkları + moloz yığınları + çatlaklar
